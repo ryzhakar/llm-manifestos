@@ -11,3 +11,4 @@
 2026-10-26T19:16+0200 | owner | decision | round: 58 kept (one .manifestos/ folder), 59 kept (no fallback read; doctor and hooks print the mv commands), 60 alternative taken (key stays other:, called the default stack in the warning), 61 kept (hook cascade; warn on fall-through only)
 2026-10-26T19:17+0200 | owner | decision | round: 62 kept (exit 1 naming the type and keys); 63 answered "all at once": --agent, the folder move, the --settings merge, and stack --diff ship together as one major release, overriding entry 55 for this release
 2026-10-26T19:17+0200 | self | decision | round closed: 58-63 answered; 56 left unsolved after the owner dismissed it; older solved entries not raised, by the owner's word that this round has one purpose
+2026-10-26T19:18+0200 | self | delegation | s3-spec (opus, background) launched from history/2026-10-26/prompts/s3-spec-400.md; plan-400.md written; its completion notice is the next wake
