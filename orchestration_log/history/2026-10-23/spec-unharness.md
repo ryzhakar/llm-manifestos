@@ -534,3 +534,121 @@ Claude Code takes one `--settings`, and launch adds its own after `LAUNCHER ARGS
 11. Doctor's stack lines are named `stack you` and `stack subagents.<key>`; the `element` lines for `you:` stay, and a key's line also carries its session files. Doctor gains `--agent`; a layout FAIL acts as a config FAIL; the manifesto plugin floor rises to 4.0.0.
 12. A block scalar refuses by its indicator alone, `>` or `|` with an optional chomping sign and digit, so a one-line value that starts with `>` and goes on still reads as text.
 13. The `No manifesto bound` line carries only the message's first line and points to `unharness doctor`, so the multi-line old-layout message stays on stderr and in doctor. Amendment (2026-10-26, orchestrator): the hook drops one trailing colon from that first line, so an old layout reads `old layout in <folder>; run these there; run unharness doctor for the fix.`
+
+# 4.0.1: the subagent hook binds under unharness
+
+The owner's order and answers for this part are entries 72-74 of `queue-long-run.md`, cited below as queue N. It supersedes, for subagent-start alone, the section "Manifesto plugin hooks under unharness". Package and plugin read 4.0.1.
+
+## Hooks (queue 73)
+
+- `subagent-start.sh` drops its call to `unharness_stands_down`. Under `UNHARNESS=1` it emits exactly what it emits in a plain session: the binding frame, the manifesto-oath skill, and the stack its `subagent_key` match names, or the fallback text, or the `No manifesto bound` line. A subagent never receives the compiled prompt from launch, so the hook remains its one binding.
+- session-start, post-compact, and drift-reminder keep standing down, since the compiled prompt binds the main session. `unharness_stands_down` stays in `ensure-repo.sh` for them.
+- `launch --no-hooks` stays the owner's opt-out and silences the subagent hook with the rest (queue 74), since `disableAllHooks` has no per-hook scope.
+
+## Doctor
+
+`MINIMUM_MANIFESTO_VERSION` becomes 4.0.1, and the docstring of `_manifesto_plugin_finding` drops "for every hook to stand down". The `manifesto plugin` OK detail reads `<version>; under unharness its subagent hook binds subagents unless launch --no-hooks`, and its FAIL detail reads `<version> is below 4.0.1, the first version whose subagent hook binds under unharness`.
+
+## Docs (queue 74)
+
+- `plugin/README.md`, the paragraph above the strip table: "Launch ... passes `UNHARNESS=1`, so the session-start, post-compact, and per-prompt drift hooks of this plugin stand down, since the compiled prompt already carries the binding. The subagent-start hook still runs, because a subagent's prompt is not the compiled prompt: it binds each subagent to its stack exactly as in a plain session. `--no-hooks` silences it with every other hook, since `disableAllHooks` has no per-hook scope." The paragraph below the table gains: "The `Hook output` row covers the subagent hook too."
+- The README's doctor paragraph names the 4.0.1 floor and its reason, as the FAIL detail words it. `plugin/SCHEMA.md`'s stand-down sentence names SessionStart, PostCompact, and UserPromptSubmit, and adds that SubagentStart runs as in a plain session.
+- The unharness README's launch line gains: "Under unharness the manifesto plugin's subagent hook still binds subagents; `--no-hooks` silences it."
+
+## Tests
+
+- `StandDownUnderUnharness` replaces its every-hook test with two. First, session-start, post-compact, and drift-reminder each print nothing and exit 0 under `UNHARNESS=1`. Second, subagent-start under `UNHARNESS=1` prints, byte for byte, what it prints with `UNHARNESS` unset, for four cases: a matched key, a fall to `other`, no `subagents:` section, and a config error, the last with equal stderr too.
+- The `UNHARNESS=0` test stays as it is. Doctor: 4.0.0 FAILs with the new detail; 4.0.1 gives the OK detail verbatim.
+
+## Decisions made in the spec
+
+1. Under unharness the subagent hook's output equals a plain session's, with no unharness-specific wording, so one template serves both.
+2. Doctor states the `--no-hooks` caveat in the `manifesto plugin` OK detail, the one line that speaks of the hooks; doctor gains no flag.
+3. The floor's FAIL names the subagent hook alone; a plugin below 4.0.0 also lacks it, so one reason covers every version below the floor.
+
+# 4.1.0: `launch --autocompact`
+
+The owner's order and answers for this part are entries 72, 75, and 76 of `queue-long-run.md`. The binary findings are the 21:40 discovery line of `2026-10-26/events-steward.md`, checked again for this part: the settings schema of 2.1.300, 2.1.306, 2.1.308, 2.1.309, and 2.1.310 each holds `autoCompactEnabled` and `idleCompaction` as optional booleans and `autoCompactWindow` as an integer from 100000 to 1000000 that drops an out-of-range value silently (`.int().min(..).max(..).optional().catch(void 0)`). Package and plugin read 4.1.0; the doctor floor stays 4.0.1.
+
+## Parsing
+
+`unharness launch [--keep-claude-md] [--keep-web-search] [--no-hooks] [--autocompact SIZE] [--claude-version X.Y.Z] [PROMPT] [-- LAUNCHER [ARGS...]]`
+
+- SIZE matches `\d+[kK]?` in full and counts thousands of tokens with or without the `k`: `500k`, `500K`, and `500` each mean 500000 (queue 76).
+- The thousands run from 100 to 1000, Claude Code's own bounds, held in `launch.py` as `AUTOCOMPACT_THOUSANDS = (100, 1000)`. Any other SIZE stops launch with exit 1 before it detects a version or caches the prompt: `unharness: --autocompact takes a whole number of thousands of tokens from 100 to 1000, such as 500k; got <SIZE>`.
+- Given twice, the last value wins, as argparse does.
+
+## The registry carries the three settings
+
+The setting names live in `switches.json` alone, by the dry rule that one change touches one place: a renamed setting in a later Claude Code then means one new registry entry verified at that version, while version selection keeps the old name for older versions, and the README table follows under its test. Names held in `launch.py` would make the same rename touch `launch.py` and the README's prose, and would pass the names at every version, blind to selection.
+
+- `OPTIONS` gains `--autocompact`, the one valued option. An entry whose option is `--autocompact` carries a tenth key, `given`: the value launch passes when the option is given. The exact string `"<size>"` in `given` stands for SIZE in tokens, passed as a JSON integer. In such an entry `value` is what passes when the option is absent, so `value` is `null` exactly when `default` is false.
+- The loader refuses with the entry's index: `given is missing` on an `--autocompact` entry; `given belongs only to an entry whose option is --autocompact` on any other; `value must be null exactly when default is false` on an `--autocompact` entry that breaks the pairing.
+- Selection: an `--autocompact` entry verified at C passes `value` when the option is absent and `default` is true, and passes `given` when the option is given. When the option is given and no `--autocompact` entry is verified at C, launch prints `unharness: --autocompact has no switch verified at <C>; it passes nothing` on stderr and goes on.
+
+Three entries follow `disableAllHooks`, in this order; each has `"kind": "settings"`, `"documented": true` (the 2.1.309 sweep's `documented_settings` names all three), `"control": false`, `"verified": ["2.1.309"]`, and `"option": "--autocompact"`:
+
+| `name` | `value` | `given` | `default` | `removes` |
+|---|---|---|---|---|
+| `autoCompactEnabled` | `false` | `true` | true | `Automatic compaction` |
+| `autoCompactWindow` | `null` | `"<size>"` | false | `Automatic compaction window` |
+| `idleCompaction` | `false` | `true` | true | `Idle compaction` |
+
+`removes` here names a behavior, not a text, since compaction replaces the conversation with a summary the harness writes.
+
+## The strip table
+
+An entry whose `value` is `null` renders as ``setting `NAME` ``. An `--autocompact` entry's Default cell appends ``; `--autocompact <size>` passes `<given>` `` to its state, `<given>` being `json.dumps(given)`, except that the sentinel renders as `<size>`. The table gains three rows:
+
+    | Automatic compaction | setting `autoCompactEnabled: false` | set; `--autocompact <size>` passes `true` |
+    | Automatic compaction window | setting `autoCompactWindow` | kept; `--autocompact <size>` passes `<size>` |
+    | Idle compaction | setting `idleCompaction: false` | set; `--autocompact <size>` passes `true` |
+
+The paragraph below the markers gains: "`passes` gives the value a valued option sends in place of the default."
+
+## Composition and the `--settings` merge
+
+At 2.1.309 with no launcher, the printed command equals the 3.7.0 line except its `--settings` word. Without `--autocompact` that word reads `'{"includeGitInstructions":false,"attribution":{"commit":"","pr":""},"autoMemoryEnabled":false,"outputStyle":"default","autoCompactEnabled":false,"idleCompaction":false}'`; with `--autocompact 500k` it ends `"outputStyle":"default","autoCompactEnabled":true,"autoCompactWindow":500000,"idleCompaction":true}'`. These two lines replace the 3.6.1 line in every byte-for-byte test.
+
+The 4.0.0 merge is unchanged, since the three keys are strip keys like the rest: an owner's `--settings` key wins over launch's, with one `unharness: your --settings sets <key>; the strip's value is left out` per shared key. An owner's `{"autoCompactEnabled": true}` without `--autocompact` thus turns compaction on at Claude Code's own window, with one note, while `idleCompaction: false` still passes; an owner's `autoCompactWindow` beside `--autocompact 500k` wins, with one note.
+
+## Doctor
+
+Doctor gains no flag and no line of its own: its `switch` lines report verification, not the value passed. The registry line reads `switch registry: newest 2.1.309; 16 switches`, and three `switch settings` lines follow `disableAllHooks`. The README's excerpt changes its count to 16.
+
+## Docs
+
+The launch synopsis in `plugin/README.md` and the unharness README gains `[--autocompact SIZE]`, and `plugin/README.md` gains this paragraph below the version paragraph:
+
+"**Compaction.** Without `--autocompact`, launch turns automatic and idle compaction off. `--autocompact 500k` turns both on and sets the window to 500000 tokens; `500` means the same, and the size runs from 100k to 1000k. Claude Code compacts when the conversation reaches the window less the room it keeps for the summary, not at the window itself. Idle compaction compacts a long conversation while the session sits idle, and Claude Code takes its mode from a server flag that unharness cannot force: `"idleCompaction": false` turns it off, but `true` cannot turn it on, so `--autocompact` only leaves it unblocked, and a login whose flag reads off never compacts while idle."
+
+## Verifying the three entries
+
+The X1 capture cannot confirm them, since no setting here changes the request bodies of a one-turn print session. Each enters by a binary check, and `control` stays false:
+
+1. The implementer runs it before the entries enter, over all five binaries in `~/.local/share/claude/versions/`: for each key, the settings-schema literal with its validator and describe text; for `autoCompactWindow`, the two bound constants, resolved to 100000 and 1000000; and the reader `("autoCompactEnabled",!0)` and `("idleCompaction",!0)`. Results go to `orchestration_log/recon/2026-10-26/autocompact-binary-check.md`, one row per version and key.
+2. The entries enter verified at 2.1.309 alone, the one registry version, when the 2.1.309 binary passes. No entry gains 2.1.300, 2.1.306, 2.1.308, or 2.1.310 from this check: a version that enters one entry joins the registry, and at that version launch would pass only that entry and drop the thirteen others.
+3. 2.1.310 enters every entry in the one commit of the orchestrator's full-strip capture run, which needs a live login; that run applies the X1 capture to the thirteen and this binary check to the three.
+4. `sweep-switches/SKILL.md` gains, in `capture-each-candidate`: "Confirm a switch that changes behavior and no request text, such as a compaction setting, by a binary check in place of a capture: the settings-schema literal, its validator, and its reader in the version's binary. Record such a switch with `control` false."
+
+## Tests
+
+- Parsing: `500k`, `500K`, `500`, `100`, and `1000k` give their tokens; `99`, `1001k`, `0`, `500m`, `5.5k`, `k`, `-5`, ` 500k`, and the empty string each refuse verbatim, with no cache file written and no version run.
+- Registry: the shipped file loads with 16 entries; each of the three refusals fires with its index; no shipped entry holds a version that another lacks, so a partial verification fails the suite.
+- Table: a fixture covers a `null` value and both `given` renderings; the README block equals the verb's output for the shipped file.
+- Composition: both `--settings` words at 2.1.309 match verbatim, with and without a launcher; `--autocompact` combines with `--no-hooks`; a fixture version with no `--autocompact` entry passes none of them and prints its note only when the option is given.
+- Merge: the owner's `autoCompactEnabled` without the option and the owner's `autoCompactWindow` with it each win and print one note.
+- Doctor: the 16-switch registry line and the three switch lines.
+
+## Decisions made in the spec
+
+1. The three setting names live in the registry through a valued option and a `given` key, not in `launch.py`.
+2. `"<size>"` in `given` is the one placeholder; launch substitutes SIZE in tokens as an integer.
+3. In an `--autocompact` entry, `value` passes when the option is absent and is `null` exactly when `default` is false, so the window passes only with the option.
+4. Each setting takes its own strip-table row, named by the behavior it governs.
+5. SIZE outside 100k-1000k refuses, since Claude Code drops an out-of-range window silently; the bounds live in `launch.py`, and the binary check confirms them at each version.
+6. The refusal happens before version detection and caching; a repeated `--autocompact` keeps the last value.
+7. The new entries enter at 2.1.309 alone after a binary check that the implementer runs; 2.1.310 enters every entry only through the orchestrator's full-strip run, so selection never drops the thirteen.
+8. Doctor gains no autocompact line or flag; its count reads 16.
+9. The sweep skill admits a binary check, with `control` false, for a switch that changes behavior and no request text.
+10. When `--autocompact` is given at a version with no verified entry, launch notes it and goes on rather than stopping.
