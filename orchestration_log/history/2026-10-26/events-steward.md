@@ -38,3 +38,6 @@
 2026-10-26T19:37+0200 | self | delegation | d1-spec and d1-quality (opus, background, read-only) launched on core c03d2dd from prompts/d1-review.md; reports recon/2026-10-26/d1-spec.md, d1-quality.md
 2026-10-26T19:38+0200 | self | delegation | wake 485bea3b (20:07) replaces 6226d38c, covering u5-docs, d1-spec, d1-quality
 2026-10-26T19:38+0200 | agent:d1-quality | receipt | dispatch refused as malformed (no head sha, no spec verdict path, no gates); answered with 0972592..c03d2dd, both suites, d1-spec.md; it starts after d1-spec lands
+2026-10-26T20:12+0200 | agent:u5-docs | failure | u5-docs and d1-spec stopped at the session limit (resets 22:20); u5 left 4732b20, 151187e, 39e0868, clean tree
+2026-10-26T20:12+0200 | owner | decision | owner switched login (/login) and typed "continue"
+2026-10-26T20:12+0200 | self | delegation | u5-docs and d1-spec resumed by message; d1-quality still waits for d1-spec.md
