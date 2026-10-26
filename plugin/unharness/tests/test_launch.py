@@ -420,6 +420,11 @@ def test_two_owner_settings_flags_stop_launch_before_the_launcher_runs(tmp_path,
         launched_with(["--settings", "{}", "--settings={}"], tmp_path, capsys)
 
 
+def test_a_bare_owner_settings_flag_as_the_last_word_stops_launch(tmp_path, capsys):
+    with pytest.raises(UnharnessError, match="^--settings after -- needs a value$"):
+        launched_with(["--settings"], tmp_path, capsys)
+
+
 @pytest.mark.parametrize("owner_words", [["--settings", '{"model":"opus"}'], ['--settings={"model":"opus"}']])
 def test_an_owner_settings_flag_leaves_the_arguments_and_passes_one_merged_settings(owner_words, tmp_path, capsys):
     argv, err = launched_with(["--print", *owner_words, "hello"], tmp_path, capsys)

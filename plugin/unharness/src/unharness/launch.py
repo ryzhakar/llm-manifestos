@@ -188,7 +188,9 @@ def _split_owner_settings(words: list[str], read_file: Callable[[str], str]) -> 
     index = 0
     while index < len(words):
         word = words[index]
-        if word == SETTINGS_FLAG and index + 1 < len(words):
+        if word == SETTINGS_FLAG:
+            if index + 1 == len(words):
+                raise UnharnessError(f"{SETTINGS_FLAG} after -- needs a value")
             values.append(words[index + 1])
             index += 2
             continue
