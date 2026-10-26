@@ -63,3 +63,5 @@
 2026-10-26T20:33+0200 | self | decision | core fast-forwarded to 48959ac; checked 405 tests, hook suite OK (30); fix3 removed; d1-quality continued (d3-quality.md)
 2026-10-26T20:35+0200 | agent:d1-quality | receipt | d3-quality.md: ready with fixes; 0 blocker, 2 major (no test of loads_you branches under --agent with digests; direct tests duplicating CLI coverage), 3 minor
 2026-10-26T20:35+0200 | self | delegation | f3-fix continued on worktree fix4 (feat/4.0.0-fix4 from 48959ac) for all five
+2026-10-26T20:39+0200 | agent:f3-fix | receipt | F4: 6d281bb..d8be461, 406 tests
+2026-10-26T20:39+0200 | self | decision | core fast-forwarded to d8be461; checked 406, hook OK; fix4 removed; d1-quality continued (d4-quality.md)
