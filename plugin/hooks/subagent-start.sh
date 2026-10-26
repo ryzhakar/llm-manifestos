@@ -8,10 +8,6 @@ fi
 export PLUGINS_CACHE_DIR
 source "$SCRIPT_DIR/ensure-repo.sh"
 
-if unharness_stands_down; then
-    exit 0
-fi
-
 detect_manifestos
 
 if [ -n "$CONFIG_ERROR" ]; then

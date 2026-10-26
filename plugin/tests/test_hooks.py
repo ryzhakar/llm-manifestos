@@ -62,6 +62,13 @@ MISSING = "you:\n  - no-such-manifesto\n"
 ALL_HOOKS = ("session-start.sh", "post-compact.sh", "subagent-start.sh", "drift-reminder.sh")
 BINDING_HOOKS = ("session-start.sh", "post-compact.sh", "subagent-start.sh")
 SUBAGENTS = "subagents:\n  other:\n    - {name}\n"
+MAIN_SESSION_HOOKS = ("session-start.sh", "post-compact.sh", "drift-reminder.sh")
+SUBAGENT_BINDING_CASES = (
+    ("a matched key", "subagents:\n  worker:\n    - first-principles\n  other:\n    - no-such-manifesto\n"),
+    ("a fall to other", SUBAGENTS.format(name="first-principles")),
+    ("no subagents section", HAPPY),
+    ("a config error", "you: [first-principles]\n"),
+)
 
 
 class SessionStart(unittest.TestCase):
@@ -158,11 +165,20 @@ class ConfigProblems(unittest.TestCase):
 
 
 class StandDownUnderUnharness(unittest.TestCase):
-    def test_every_hook_prints_nothing_when_unharness_is_set(self):
+    def test_every_main_session_hook_prints_nothing_when_unharness_is_set(self):
         subagents = HAPPY + SUBAGENTS.format(name="first-principles")
-        for script in ALL_HOOKS:
-            r = run_hook(script, subagents, stdin=json.dumps({"agent_type": "worker"}), UNHARNESS="1")
+        for script in MAIN_SESSION_HOOKS:
+            r = run_hook(script, subagents, UNHARNESS="1")
             self.assertEqual((r.returncode, r.stdout, r.stderr), (0, "", ""), script)
+
+    def test_the_subagent_hook_binds_under_unharness_exactly_as_in_a_plain_session(self):
+        for label, config in SUBAGENT_BINDING_CASES:
+            with self.subTest(label):
+                plain = run_hook("subagent-start.sh", config, stdin=json.dumps({"agent_type": "worker"}))
+                unharnessed = run_hook("subagent-start.sh", config, stdin=json.dumps({"agent_type": "worker"}), UNHARNESS="1")
+                self.assertNotEqual(plain.stdout, "")
+                self.assertEqual((unharnessed.returncode, unharnessed.stdout, unharnessed.stderr),
+                                 (plain.returncode, plain.stdout, plain.stderr))
 
     def test_unharness_zero_leaves_every_hook_running(self):
         subagents = HAPPY + SUBAGENTS.format(name="first-principles")
