@@ -31,3 +31,4 @@
 2026-10-26T19:34+0200 | agent:u3-hooks | receipt | U3 done: feat/4.0.0-hooks d3742be..56d46de, hook suite 28, package 365; follow-ups sent: parse_taglines block-scalar message, no ":;" in the old-layout context line
 2026-10-26T19:35+0200 | agent:u3-hooks | receipt | U3 follow-ups: d52df38 (test only), 9968e96 (no ":;"); checked: hook suite OK (29), package 365
 2026-10-26T19:35+0200 | self | decision | core fast-forwarded to 9968e96; hooks worktree removed; core carries merge commits of session/long-run from U1 and U3, to be linearized by a rebase before main. Alternative: keep the merges
+2026-10-26T19:36+0200 | self | delegation | worktree docs (feat/4.0.0-docs) from core 9968e96; u5-docs (opus, background) launched from prompts/u5-docs.md
