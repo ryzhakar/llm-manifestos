@@ -137,9 +137,9 @@ class KeyMatch:
 def old_layout(project: Path) -> list[str]:
     """Return the commands, run in the project folder, that move each old path present to its new place."""
     present = [(old, new) for old, new in OLD_LAYOUT_MOVES if (project / old).exists()]
+    needs_folder = any(not (project / new).exists() for _, new in present)
     moves = [_move_command(project, old, new) for old, new in present]
-    needs_folder = any(move.startswith("mv ") for move in moves)
-    return [MAKE_PROJECT_FOLDER] * needs_folder + moves
+    return ([MAKE_PROJECT_FOLDER] if needs_folder else []) + moves
 
 
 def _move_command(project: Path, old: str, new: str) -> str:
