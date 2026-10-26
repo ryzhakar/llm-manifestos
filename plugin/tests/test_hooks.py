@@ -23,13 +23,15 @@ def tagline_of(path):
     raise AssertionError("no tagline in " + path)
 
 
-def run_hook(script, config, stdin="", plugin_root=PLUGIN_ROOT, files=None, **extra_env):
+def run_hook(script, config, stdin="", plugin_root=PLUGIN_ROOT, files=None, setup_dirs=(), **extra_env):
     """Run one hook in a fresh project folder, with no config file when config is None; the folder's path rides on the result as `project`."""
     with tempfile.TemporaryDirectory() as project:
         if config is not None:
             os.mkdir(os.path.join(project, ".manifestos"))
             with open(os.path.join(project, ".manifestos", "config.yaml"), "w") as f:
                 f.write(config)
+        for folder in setup_dirs:
+            os.makedirs(os.path.join(project, folder))
         for name, text in (files or {}).items():
             with open(os.path.join(project, name), "w") as f:
                 f.write(text)
@@ -246,6 +248,12 @@ class DriftReminder(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("Active bindings: first-principles", r.stdout)
         self.assertIn(tagline_of(FIRST_PRINCIPLES), r.stdout)
+
+    def test_a_block_scalar_in_frontmatter_surfaces_its_message_and_the_name_prints_bare(self):
+        r = run_hook("drift-reminder.sh", "manifesto_dir: reg\nyou:\n  - folded\n",
+                     files={"reg/manifestos/folded.md": "---\ntagline: >\n  folded text\n---\nbody\n"}, setup_dirs=("reg/manifestos",))
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, "Active bindings: folded"))
+        self.assertIn("key 'tagline' holds a block scalar; block scalars are not supported; write the value on one line", r.stderr)
 
     def test_missing_manifesto_file_prints_bare_name(self):
         r = run_hook("drift-reminder.sh", MISSING)
