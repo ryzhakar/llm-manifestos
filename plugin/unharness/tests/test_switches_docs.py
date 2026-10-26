@@ -78,3 +78,37 @@ def test_the_schema_points_at_the_readme_for_the_version_rule():
     text = " ".join(SCHEMA.read_text().split())
 
     assert "`--claude-version X.Y.Z`" in text and "picks the entries verified at one registry version" in text
+
+
+COMPACTION_PARAGRAPH = (
+    "**Compaction.** Without `--autocompact`, launch turns automatic and idle compaction off. `--autocompact 500k` turns both on and"
+    " sets the window to 500000 tokens; `500` means the same, and the size runs from 100k to 1000k. Claude Code compacts when the"
+    " conversation reaches the window less the room it keeps for the summary, not at the window itself. Idle compaction compacts a"
+    " long conversation while the session sits idle, and Claude Code takes its mode from a server flag that unharness cannot force:"
+    " `\"idleCompaction\": false` turns it off, but `true` cannot turn it on, so `--autocompact` only leaves it unblocked, and a login"
+    " whose flag reads off never compacts while idle."
+)
+
+
+@pytest.mark.parametrize("document", [PLUGIN_README, PACKAGE_README])
+def test_each_readme_lists_autocompact_in_the_synopsis_of_launch(document):
+    synopsis = next(line for line in document.read_text().splitlines() if line.startswith("- `unharness launch "))
+
+    assert "[--no-hooks] [--autocompact SIZE] [--claude-version X.Y.Z]" in synopsis
+
+
+def test_the_compaction_paragraph_follows_the_version_paragraph():
+    paragraphs = PLUGIN_README.read_text().split("\n\n")
+    version = next(index for index, paragraph in enumerate(paragraphs) if paragraph.startswith("**Version.**"))
+
+    assert paragraphs[version + 1] == COMPACTION_PARAGRAPH
+
+
+def test_the_paragraph_below_the_markers_says_what_passes_means():
+    _, after = between_markers(PLUGIN_README.read_text())
+
+    assert "`passes` gives the value a valued option sends in place of the default." in after.lstrip().split("\n\n")[0]
+
+
+def test_the_doctor_excerpt_counts_the_shipped_switches():
+    assert f"OK switch registry: newest 2.1.309; {len(shipped_switches())} switches" in PLUGIN_README.read_text()
