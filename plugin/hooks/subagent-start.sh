@@ -14,6 +14,11 @@ fi
 
 detect_manifestos
 
+if [ -n "$CONFIG_ERROR" ]; then
+    unbound_line | emit_context SubagentStart
+    exit 0
+fi
+
 # Gate: exit only when BOTH you: and subagents: are empty (AND logic)
 YOU_EMPTY=false
 { [ -z "${YOU_STACK:-}" ] || [ "$YOU_STACK" = "[]" ]; } && YOU_EMPTY=true
@@ -25,16 +30,6 @@ fi
 
 PARTS_DIR="$SCRIPT_DIR/templates/parts"
 SKILL_MD="$SCRIPT_DIR/../skills/manifesto-oath/SKILL.md"
-
-# Wrap text in the hookSpecificOutput JSON required by SubagentStart hooks.
-# Plain text stdout is silently discarded; only this wrapper is injected.
-emit_json() {
-    python3 -c '
-import json, sys
-text = sys.stdin.read()
-print(json.dumps({"hookSpecificOutput": {"hookEventName": "SubagentStart", "additionalContext": text}}))
-'
-}
 
 # Emit binding frame + SKILL.md for a given ELEMENT_DESCRIPTION
 emit_binding() {
@@ -67,7 +62,7 @@ if [ -z "${SUBAGENT_SECTION:-}" ] || [ "${SUBAGENT_SECTION}" = "{}" ]; then
     ELEMENT_DESCRIPTION="No role-specific elements matched for this agent type. Your orchestrator provides bindings in the dispatch prompt."
     REBIND_NOTE=""
     export ELEMENT_DESCRIPTION MANIFESTO_DIR REBIND_NOTE
-    emit_binding | emit_json
+    emit_binding | emit_context SubagentStart
     exit 0
 fi
 
@@ -101,7 +96,7 @@ if [ -z "$MATCHED_ELEMENTS" ]; then
     ELEMENT_DESCRIPTION="No role-specific elements matched for this agent type. Your orchestrator provides bindings in the dispatch prompt."
     REBIND_NOTE=""
     export ELEMENT_DESCRIPTION MANIFESTO_DIR REBIND_NOTE
-    emit_binding | emit_json
+    emit_binding | emit_context SubagentStart
     exit 0
 fi
 
@@ -111,4 +106,4 @@ ELEMENT_DESCRIPTION=$(printf '%s' "$MATCHED_ELEMENTS" | python3 "$SCRIPT_DIR/des
 REBIND_NOTE=""
 
 export ELEMENT_DESCRIPTION MANIFESTO_DIR REBIND_NOTE
-emit_binding | emit_json
+emit_binding | emit_context SubagentStart

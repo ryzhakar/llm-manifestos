@@ -23,13 +23,16 @@ def tagline_of(path):
     raise AssertionError("no tagline in " + path)
 
 
-def run_hook(script, config, stdin="", plugin_root=PLUGIN_ROOT, **extra_env):
+def run_hook(script, config, stdin="", plugin_root=PLUGIN_ROOT, files=None, **extra_env):
     """Run one hook in a fresh project folder, with no config file when config is None; the folder's path rides on the result as `project`."""
     with tempfile.TemporaryDirectory() as project:
         if config is not None:
             os.mkdir(os.path.join(project, ".manifestos"))
             with open(os.path.join(project, ".manifestos", "config.yaml"), "w") as f:
                 f.write(config)
+        for name, text in (files or {}).items():
+            with open(os.path.join(project, name), "w") as f:
+                f.write(text)
         env = {k: v for k, v in os.environ.items() if k != "UNHARNESS"}
         env.update(CLAUDE_PLUGIN_ROOT=plugin_root, CLAUDE_PROJECT_DIR=project, **extra_env)
         result = subprocess.run(
@@ -40,9 +43,21 @@ def run_hook(script, config, stdin="", plugin_root=PLUGIN_ROOT, **extra_env):
         return result
 
 
+def unbound_line(message):
+    return f"No manifesto bound: {message}; run unharness doctor for the fix."
+
+
+def bound_line(script, stdout):
+    """Return the context line a binding hook printed: stdout as is for session-start, the additionalContext of its JSON otherwise."""
+    if script == "session-start.sh":
+        return stdout.rstrip("\n")
+    return json.loads(stdout)["hookSpecificOutput"]["additionalContext"].rstrip("\n")
+
+
 HAPPY = "you:\n  - first-principles\n"
 MISSING = "you:\n  - no-such-manifesto\n"
 ALL_HOOKS = ("session-start.sh", "post-compact.sh", "subagent-start.sh", "drift-reminder.sh")
+BINDING_HOOKS = ("session-start.sh", "post-compact.sh", "subagent-start.sh")
 SUBAGENTS = "subagents:\n  other:\n    - {name}\n"
 
 
@@ -93,19 +108,37 @@ class SessionStartRegistry(unittest.TestCase):
 
 
 class ConfigProblems(unittest.TestCase):
-    def test_a_broken_config_prints_one_line_on_stderr_and_nothing_on_stdout_in_every_hook(self):
-        for script in ALL_HOOKS:
+    def test_a_broken_config_is_named_on_stderr_and_in_the_output_form_of_every_binding_hook(self):
+        r = run_hook("drift-reminder.sh", "you: [first-principles]\n")
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, "", "unharness: you must be a list of elements\n"))
+        for script in BINDING_HOOKS:
             r = run_hook(script, "you: [first-principles]\n", stdin=json.dumps({"agent_type": "worker"}))
-            self.assertEqual((r.returncode, r.stdout), (0, ""), script)
+            self.assertEqual(r.returncode, 0, script)
             self.assertEqual(r.stderr, "unharness: you must be a list of elements\n", script)
+            self.assertEqual(bound_line(script, r.stdout), unbound_line("you must be a list of elements"), script)
 
-    def test_a_legacy_source_is_refused_in_one_line_in_every_hook(self):
+    def test_a_legacy_source_is_refused_in_one_line_in_every_binding_hook(self):
         for source in ("https://example.com/x.md", "./a.md", "some hint"):
-            for script in ALL_HOOKS:
+            for script in BINDING_HOOKS:
                 r = run_hook(script, "you:\n  - name: x\n    source: " + source + "\n", stdin=json.dumps({"agent_type": "worker"}))
-                self.assertEqual((r.returncode, r.stdout), (0, ""), script)
+                self.assertEqual(r.returncode, 0, script)
                 self.assertEqual(len(r.stderr.splitlines()), 1, script)
                 self.assertIn("write a path as file <path>", r.stderr, script)
+                self.assertEqual(bound_line(script, r.stdout), unbound_line(r.stderr.removeprefix("unharness: ").rstrip("\n")), script)
+
+    def test_an_old_layout_is_printed_whole_on_stderr_and_its_first_line_enters_the_context(self):
+        for script in BINDING_HOOKS:
+            r = run_hook(script, None, stdin=json.dumps({"agent_type": "worker"}), files={".manifestos.yaml": HAPPY})
+            self.assertEqual(r.returncode, 0, script)
+            first, *commands = r.stderr.removeprefix("unharness: ").splitlines()
+            self.assertEqual(first, "old layout in " + r.project + "; run these there:", script)
+            self.assertEqual(commands, ["mkdir -p .manifestos", "mv .manifestos.yaml .manifestos/config.yaml"], script)
+            self.assertEqual(bound_line(script, r.stdout), unbound_line(first), script)
+
+    def test_drift_reminder_keeps_stderr_alone_on_an_old_layout(self):
+        r = run_hook("drift-reminder.sh", None, files={".manifestos.yaml": HAPPY})
+        self.assertEqual((r.returncode, r.stdout), (0, ""))
+        self.assertIn("old layout in", r.stderr)
 
     def test_python_chatter_on_stderr_does_not_corrupt_a_valid_config(self):
         for script in ("session-start.sh", "post-compact.sh", "drift-reminder.sh"):

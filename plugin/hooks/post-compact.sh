@@ -14,21 +14,17 @@ fi
 
 detect_manifestos
 
+if [ -n "$CONFIG_ERROR" ]; then
+    unbound_line | emit_context PostCompact
+    exit 0
+fi
+
 # Gate: no config → silent exit
 YOU_EMPTY=false
 { [ -z "${YOU_STACK:-}" ] || [ "$YOU_STACK" = "[]" ]; } && YOU_EMPTY=true
 if $YOU_EMPTY; then
     exit 0
 fi
-
-# PostCompact requires hookSpecificOutput JSON — plain text goes to debug log only.
-emit_json() {
-    python3 -c '
-import json, sys
-text = sys.stdin.read()
-print(json.dumps({"hookSpecificOutput": {"hookEventName": "PostCompact", "additionalContext": text}}))
-'
-}
 
 # Render orchestrator elements as natural language prose
 ELEMENT_DESCRIPTION=$(printf '%s' "$YOU_STACK" | python3 "$SCRIPT_DIR/describe_elements.py" "$CONFIG_DIR" "$MANIFESTO_DIR")
@@ -60,4 +56,4 @@ User-provided elements cannot be reliably recovered from a compacted summary —
 
 The SubagentStart hook injects role-matched element names, purposes, and the oath protocol into subagents automatically — never element content. Subagents load content from source, so your dispatch prompt MUST carry the path or URL for every element without a configured source. You MAY add extra elements in dispatch prompts to augment the automatic stack.
 FOOTER
-} | emit_json
+} | emit_context PostCompact

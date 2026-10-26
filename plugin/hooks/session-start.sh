@@ -14,6 +14,11 @@ fi
 
 detect_manifestos
 
+if [ -n "$CONFIG_ERROR" ]; then
+    unbound_line
+    exit 0
+fi
+
 # Gate: no config → silent exit
 YOU_EMPTY=false
 { [ -z "${YOU_STACK:-}" ] || [ "$YOU_STACK" = "[]" ]; } && YOU_EMPTY=true

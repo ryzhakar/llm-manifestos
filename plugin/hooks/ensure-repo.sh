@@ -29,13 +29,35 @@ unharness_stands_down() {
     [ -n "${UNHARNESS:-}" ] && [ "$UNHARNESS" != "0" ]
 }
 
+# The first line of the message a config error left in the file, without its "unharness: " prefix.
+first_message_line() {
+    local line
+    line=$(grep -m1 '^unharness: ' "$1" || head -n1 "$1")
+    printf '%s' "${line#unharness: }"
+}
+
+# Print the line that tells the session why no manifesto is bound.
+unbound_line() {
+    printf 'No manifesto bound: %s; run unharness doctor for the fix.\n' "$CONFIG_ERROR"
+}
+
+# Wrap stdin in the hookSpecificOutput JSON of the named hook event.
+emit_context() {
+    python3 -c '
+import json, sys
+print(json.dumps({"hookSpecificOutput": {"hookEventName": sys.argv[1], "additionalContext": sys.stdin.read()}}))
+' "$1"
+}
+
 detect_manifestos() {
     local project_dir="${CLAUDE_PROJECT_DIR:-.}"
     local config errors out status=0
+    CONFIG_ERROR=""
     errors=$(mktemp)
     config=$(python3 "$CONFIG_MODULE" --json --project "$project_dir" 2>"$errors") || status=$?
     if [ "$status" -ne 0 ] && [ "$status" -ne "$MISSING_CONFIG_STATUS" ]; then
         cat "$errors" >&2
+        CONFIG_ERROR=$(first_message_line "$errors")
     fi
     rm -f "$errors"
     if [ "$status" -ne 0 ]; then
