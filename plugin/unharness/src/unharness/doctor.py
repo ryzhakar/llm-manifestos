@@ -281,7 +281,7 @@ def _prompt_size_finding(elements: list[Element], documents: list[Document], dir
 def _session_findings(documents: list[Document], directory: Path, modes: Modes, loads_you: bool) -> list[Finding]:
     """Check the four session files against the stack; a problem fails for the pair the flags load, else warns."""
     return [
-        _session_finding(name, directory, documents, loaded=loads_you and pair == _loaded_pair(modes))
+        _session_finding(name, pair.fix_command, directory, documents, loaded=loads_you and pair == _loaded_pair(modes))
         for pair in (FULL_FILES, MINIFIED_FILES)
         for name in (pair.interplay, pair.commitments)
     ]
@@ -416,8 +416,8 @@ def _word_count(texts: Iterable[str]) -> int:
     return sum(len(text.split()) for text in texts)
 
 
-def _session_finding(name: str, directory: Path, documents: list[Document], loaded: bool) -> Finding:
-    problem = session_file_problem(name, read_if_present(directory / name), documents)
+def _session_finding(name: str, fix_command: str, directory: Path, documents: list[Document], loaded: bool) -> Finding:
+    problem = session_file_problem(name, read_if_present(directory / name), documents, fix_command)
     if problem is None:
         return Finding(Status.OK, name, "current")
     return Finding(Status.FAIL if loaded else Status.WARN, name, problem)

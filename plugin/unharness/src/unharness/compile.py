@@ -85,7 +85,7 @@ def _tagged(block: Document) -> str:
     return f"<{block.name}{governs}>\n{block.text}\n</{block.name}>"
 
 
-def _current_body(file_name: str, text: str | None, documents: list[Document], fix_command: str = WRITING_SKILL) -> str:
+def _current_body(file_name: str, text: str | None, documents: list[Document], fix_command: str) -> str:
     """Return the session file without its stack block, or stop if the file is missing or stale."""
     if text is None:
         raise UnharnessError(f"{file_name} is missing; run {fix_command}")
@@ -116,7 +116,7 @@ def session_file_diff(file_name: str, text: str | None, documents: list[Document
     ))
 
 
-def session_file_problem(file_name: str, text: str | None, documents: list[Document], fix_command: str = WRITING_SKILL) -> str | None:
+def session_file_problem(file_name: str, text: str | None, documents: list[Document], fix_command: str) -> str | None:
     """Return why the session file would stop the prompt, None when it is current."""
     try:
         _current_body(file_name, text, documents, fix_command)
