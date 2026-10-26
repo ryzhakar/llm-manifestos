@@ -104,3 +104,5 @@ Owner order (2026-10-26, present): "add an '--agent' flag to the prompt command 
 63. Solved: this ships first, as 4.0.0, since the layout move breaks existing projects; `--settings` merge and `stack --diff` follow as 4.1.0 and 4.2.0. Alternative: 3.8.0, the earlier releases shifting to 3.9.0 and 3.10.0.
 
 Round of 2026-10-26 (owner present, purpose limited to this work): 58 kept; 59 kept; 60 alternative taken: the key stays `other:`, the warning calls it the default stack; 61 kept; 62 kept; 63 answered "all at once": `--agent`, the folder move, the `--settings` merge, and `stack --diff` ship as one release, 4.0.0. Entry 56 dismissed ("this office hours session has a purpose. the question you raised is not it."), still unsolved.
+64. Solved (from gym/trainer-u3's ask): in 4.0.0, `unharness doctor` resolves every stack, `you:` and each `subagents:` key, one line per stack. Alternative: resolve only the stack `--agent` names.
+65. Solved: the config parser's error on a `>` or `|` block scalar names the cause and the fix ("block scalars are not supported; write the value on one line"). Alternative: support folded scalars in the mini parser.

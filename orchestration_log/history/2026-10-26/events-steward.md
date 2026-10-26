@@ -12,3 +12,7 @@
 2026-10-26T19:17+0200 | owner | decision | round: 62 kept (exit 1 naming the type and keys); 63 answered "all at once": --agent, the folder move, the --settings merge, and stack --diff ship together as one major release, overriding entry 55 for this release
 2026-10-26T19:17+0200 | self | decision | round closed: 58-63 answered; 56 left unsolved after the owner dismissed it; older solved entries not raised, by the owner's word that this round has one purpose
 2026-10-26T19:18+0200 | self | delegation | s3-spec (opus, background) launched from history/2026-10-26/prompts/s3-spec-400.md; plan-400.md written; its completion notice is the next wake
+2026-10-26T19:18+0200 | self | delegation | wake f7c58373 set for 19:47 to check s3-spec
+2026-10-26T19:19+0200 | owner | decision | "i'm not present to answer anything. you're answering the spec agent if they as anything. also, expect \"guests\" to consult with you." Read: I answer the spec agent's questions myself; visiting sessions may consult me, handled by peers:receive
+2026-10-26T19:21+0200 | peer:gym/trainer-u3 | receipt | [ask] from trainer-u3 (gym), on the owner's word: gym .manifestos.yaml fails on a folded `>` purpose; how to validate a stack; how a role session binds its role stack; where precedence goes
+2026-10-26T19:21+0200 | self | decision | answered trainer-u3: /tmp/stkcheck/check_stacks.py resolves every stack (verified on its draft and on gym's config); role session via `prompt --config role.yaml | launch`; scopes in purposes, precedence in the interplay. Queue 64-65 written for 4.0.0
