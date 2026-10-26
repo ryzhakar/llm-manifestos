@@ -399,7 +399,15 @@ Promotion is a human step, and a sweep never edits the registry. A switch enters
 
 # 4.0.0: subagent prompts, one project folder, settings merge, stack diff
 
-The owner's order and answers for this part are entries 48, 58-63, 64, and 65 of `queue-long-run.md` and its "Round of 2026-10-26", cited below as queue N and the round. The round kept 58, 59, 61, and 62, took 60's alternative, and ships all four changes as one release, 4.0.0. Package and plugin read 4.0.0.
+The owner's order and answers for this part are entries 48, 58-65, and 67 of `queue-long-run.md` and its "Round of 2026-10-26", cited below as queue N and the round. The round kept 58, 59, 61, and 62, took 60's alternative, and ships all four changes as one release, 4.0.0. Package and plugin read 4.0.0.
+
+## Hook errors (queue 67)
+
+When `config.py --json` exits 1, or a config, parse, or resolve error stops a hook otherwise, session-start, post-compact, and subagent-start each print the full message on stderr, then one line on stdout in the hook's own output form: plain for session-start, inside `hookSpecificOutput.additionalContext` for the other two. Each exits 0. The line enters the session's context:
+
+    No manifesto bound: <the message's first line>; run unharness doctor for the fix.
+
+A missing config, status 2, stays silent, and drift-reminder keeps stderr alone. This supersedes queue 22's silent stdout; SCHEMA.md's Errors paragraph and error table say so.
 
 ## The project folder (queue 58)
 
@@ -436,7 +444,7 @@ The project folder is the folder that holds `.manifestos/`; `.manifestos/` holds
 `mkdir` appears whenever any `mv` does. When the new path already exists, its line reads `# both <old> and <new> exist; keep one and delete the other` in place of the `mv`, since `mv` would overwrite a file or nest a folder.
 
 - `load` calls `old_layout` before it reads anything, and stops when the list is not empty. The message is the one multi-line error: `old layout in <project folder>; run these there:` and then each command on its own line. No reader falls back to an old path.
-- `unharness` prints it after `unharness: ` and exits 1. Each hook receives it from `config.py --json` with status 1 and prints it on stderr, exits 0, and binds nothing, as for every config error. A project with an old config and no new one gets this message, never `no config`.
+- `unharness` prints it after `unharness: ` and exits 1. Each hook receives it from `config.py --json` with status 1 and reports it as every config error, by the next section. A project with an old config and no new one gets this message, never `no config`.
 - Doctor prints it as lines, below.
 
 ## `unharness prompt --agent <type>` (queue 61, 62; the round on 60)
@@ -501,7 +509,8 @@ Claude Code takes one `--settings`, and launch adds its own after `LAUNCHER ARGS
 
 ## Tests
 
-- Layout: each old path alone yields `mkdir` and its own line; all paths yield the order above; an existing new path yields the `# both` line; `load` stops with the multi-line message, exit 1, before a missing-config check; each hook prints it on stderr and exits 0 with empty stdout; a `file` source resolves against the project folder; moved session files load without a recompile; a key with `/`, `.`, or `..` refuses.
+- Layout: each old path alone yields `mkdir` and its own line; all paths yield the order above; an existing new path yields the `# both` line; `load` stops with the multi-line message, exit 1, before a missing-config check; each hook prints it on stderr and exits 0; a `file` source resolves against the project folder; moved session files load without a recompile; a key with `/`, `.`, or `..` refuses.
+- Hook errors: for an old layout, a parse error, and an unresolvable source, each binding hook exits 0, prints the full message on stderr, and prints the `No manifesto bound` line verbatim in its output form, session-start as plain text and the other two inside valid `hookSpecificOutput` JSON; a missing config leaves stdout and stderr empty.
 - Cascade: one table of types and keys drives both `subagent_key` and the subagent-start hook, covering exact, the part after the last `:`, a suffix, the config-order tie between two suffix keys, an exact `other`, an empty type, the fall-through, and no match; the hook's named elements equal the package's choice for every row.
 - `--agent`: the fall-through warning prints once and verbatim; no match exits 1 with the keys, and with `keys: none`; an empty list refuses; each mode flag combines; agent messages name the key's path and `/compile-commitments <key>`; `stack --agent` prints the matched block; `--agent` and `--diff` each refuse slugs.
 - Settings: none, the spaced form, the `=` form, JSON text, a file path, two flags, an unreadable file, and a non-object each behave as above; owner keys come first; a shared key keeps the owner's value and prints its note; a nested object replaces whole; the printed command at 2.1.309 stays byte for byte.
@@ -524,3 +533,4 @@ Claude Code takes one `--settings`, and launch adds its own after `LAUNCHER ARGS
 10. `stack --diff` diffs the recorded and current `<stack>` lines as a zero-context unified diff, never element texts, and exits 1 on a difference, as `diff` does.
 11. Doctor's stack lines are named `stack you` and `stack subagents.<key>`; the `element` lines for `you:` stay, and a key's line also carries its session files. Doctor gains `--agent`; a layout FAIL acts as a config FAIL; the manifesto plugin floor rises to 4.0.0.
 12. A block scalar refuses by its indicator alone, `>` or `|` with an optional chomping sign and digit, so a one-line value that starts with `>` and goes on still reads as text.
+13. The `No manifesto bound` line carries only the message's first line and points to `unharness doctor`, so the multi-line old-layout message stays on stderr and in doctor.
