@@ -176,3 +176,22 @@ def test_a_malformed_claude_version_fails_in_one_line_with_status_1(tmp_path):
     run = run_launch(tmp_path, PROMPT, "--claude-version", "latest", "--", "fakeclaude")
 
     assert (run.returncode, run.stdout, run.stderr) == (1, "", "unharness: --claude-version takes X.Y.Z, got latest\n")
+
+
+def test_a_size_out_of_bounds_fails_in_one_line_with_status_1_and_runs_nothing(tmp_path):
+    fake_launcher(tmp_path)
+
+    run = run_launch(tmp_path, PROMPT, "--autocompact", "1001k", "--", "fakeclaude")
+
+    message = "unharness: --autocompact takes a whole number of thousands of tokens from 100 to 1000, such as 500k; got 1001k\n"
+    assert (run.returncode, run.stdout, run.stderr) == (1, "", message)
+    assert not (tmp_path / "cache").exists() and not (tmp_path / "argv").exists()
+
+
+@pytest.mark.parametrize(("sizes", "status"), [(["99", "500k"], 3), (["500k", "99"], 1)])
+def test_the_last_autocompact_given_is_the_one_that_counts(sizes, status, tmp_path):
+    fake_launcher(tmp_path)
+
+    run = run_launch(tmp_path, PROMPT, *(word for size in sizes for word in ("--autocompact", size)), "--claude-version", "2.1.309", "--", "fakeclaude")
+
+    assert run.returncode == status

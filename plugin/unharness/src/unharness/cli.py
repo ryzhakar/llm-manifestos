@@ -49,6 +49,7 @@ LAUNCH_VERB = "launch"
 DOCTOR_VERB = "doctor"
 SWITCHES_VERB = "switches"
 CLAUDE_VERSION_FLAG = "--claude-version"
+AUTOCOMPACT_FLAG = "--autocompact"
 MINIFIED_FLAG = "--minified"
 AGENT_FLAG = "--agent"
 DIFF_FLAG = "--diff"
@@ -93,6 +94,7 @@ def _run(argv: list[str]) -> int:
     launch_parser.add_argument("prompt", nargs="?")
     for flag in ("--keep-claude-md", "--keep-web-search", "--no-hooks"):
         launch_parser.add_argument(flag, action="store_true")
+    launch_parser.add_argument(AUTOCOMPACT_FLAG)
     launch_parser.add_argument(CLAUDE_VERSION_FLAG)
     verbs.add_parser(SWITCHES_VERB)
     doctor_parser = verbs.add_parser(DOCTOR_VERB)
@@ -131,7 +133,9 @@ def _launch(arguments: argparse.Namespace, launcher: list[str]) -> int:
     if arguments.prompt is None and sys.stdin.isatty():
         raise UnharnessError("no prompt: pass PROMPT or pipe unharness prompt")
     prompt = arguments.prompt if arguments.prompt is not None else sys.stdin.read()
-    options = Options(arguments.keep_claude_md, arguments.keep_web_search, arguments.no_hooks, launcher, arguments.claude_version)
+    options = Options(
+        arguments.keep_claude_md, arguments.keep_web_search, arguments.no_hooks, launcher, arguments.claude_version, arguments.autocompact,
+    )
     return launch(
         prompt,
         options,
