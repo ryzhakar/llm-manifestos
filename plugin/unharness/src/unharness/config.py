@@ -15,6 +15,10 @@ MANIFESTO_SOURCE = "manifesto"
 SKILL_SOURCE = "skill"
 FILE_SOURCE = "file"
 CLAUDE_MD = "CLAUDE.md"
+OTHER_KEY = "other"
+NAMESPACE_SEPARATOR = ":"
+FOLDER_KEY_PARTS = ("/",)
+FOLDER_KEY_NAMES = (".", "..")
 EMPTY_STACK_MESSAGE = "the stack is empty"
 ACTIVE_MANIFESTOS_SECTION = re.compile(r"^## Active Manifestos\n(.*?)(?=^## |\Z)", re.M | re.S)
 SOURCE = re.compile(rf"^({MANIFESTO_SOURCE}|{SKILL_SOURCE}|{FILE_SOURCE}) (\S.*)$")
@@ -88,12 +92,29 @@ def load(path: Path) -> Config:
     roles = root.get("subagents") or {}
     if not isinstance(roles, dict):
         raise UnharnessError("subagents must be a mapping of role to list of elements")
+    for key in roles:
+        _require_folder_name(key)
     return Config(
         you=_elements(root.get("you") or [], "you"),
         subagents={role: _elements(items or [], f"subagents.{role}") for role, items in roles.items()},
         directory=path.parent,
         registry=(path.parent / root["manifesto_dir"]).resolve() if root.get("manifesto_dir") else None,
     )
+
+
+def _require_folder_name(key: str) -> None:
+    if any(part in key for part in FOLDER_KEY_PARTS) or key in FOLDER_KEY_NAMES:
+        raise UnharnessError(f"subagents key '{key}' cannot name a folder")
+
+
+def subagent_key(agent_type: str, keys: list[str]) -> str | None:
+    """Return the first subagents key the agent type matches by exact name, last namespace part, suffix, or other, else None."""
+    default = OTHER_KEY if OTHER_KEY in keys else None
+    if not agent_type:
+        return default
+    local_name = agent_type.rsplit(NAMESPACE_SEPARATOR, 1)[-1]
+    suffix_keys = [key for key in keys if key != OTHER_KEY and agent_type.endswith(key)]
+    return next((key for key in [agent_type, local_name, *suffix_keys] if key in keys), default)
 
 
 def _config_text(path: Path) -> str:

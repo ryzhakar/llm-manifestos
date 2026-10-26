@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from unharness.config import Config, Element, UnharnessError, load
+from unharness.config import Config, Element, UnharnessError, load, subagent_key
 from unharness.resolve import resolve_stack
 
 CONFIG_SCRIPT = Path(__file__).parent.parent / "src" / "unharness" / "config.py"
@@ -231,3 +231,33 @@ def test_a_value_that_merely_starts_with_a_fold_sign_still_reads_as_text(tmp_pat
     config = load(write_config(tmp_path, "you:\n  - name: dry\n    purpose: > 3 homes\n"))
 
     assert config.you[0].purpose == "> 3 homes"
+
+
+CASCADE = [
+    ("implementer", ["implementer", "other"], "implementer"),
+    ("dev-cycle:implementer", ["implementer", "other"], "implementer"),
+    ("a:dev-cycle:implementer", ["implementer"], "implementer"),
+    ("dev-cycle:implementer", ["dev-cycle:implementer", "implementer"], "dev-cycle:implementer"),
+    ("code-reviewer", ["reviewer", "other"], "reviewer"),
+    ("code-reviewer", ["viewer", "reviewer"], "viewer"),
+    ("other", ["implementer", "other"], "other"),
+    ("", ["implementer", "other"], "other"),
+    ("explorer", ["implementer", "other"], "other"),
+    ("explorer", ["implementer"], None),
+    ("", [], None),
+]
+
+
+@pytest.mark.parametrize("agent_type, keys, expected", CASCADE)
+def test_an_agent_type_matches_the_first_key_of_the_cascade(agent_type, keys, expected):
+    assert subagent_key(agent_type, keys) == expected
+
+
+@pytest.mark.parametrize("key", ["a/b", ".", ".."])
+def test_a_subagents_key_that_cannot_name_a_folder_stops_the_load(tmp_path, key):
+    path = write_config(tmp_path, f"subagents:\n  {key}:\n    - dry\n")
+
+    with pytest.raises(UnharnessError) as failure:
+        load(path)
+
+    assert str(failure.value) == f"subagents key '{key}' cannot name a folder"
