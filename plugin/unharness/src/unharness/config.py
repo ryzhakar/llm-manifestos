@@ -16,22 +16,22 @@ SKILL_SOURCE = "skill"
 FILE_SOURCE = "file"
 CLAUDE_MD = "CLAUDE.md"
 PROJECT_FOLDER = ".manifestos"
-CONFIG_PATH = Path(PROJECT_FOLDER) / "config.yaml"
+CONFIG_PATH = f"{PROJECT_FOLDER}/config.yaml"
 INTERPLAY_PATH = f"{PROJECT_FOLDER}/interplay.md"
 COMMITMENTS_PATH = f"{PROJECT_FOLDER}/commitments.md"
 MINIFIED_INTERPLAY_PATH = f"{PROJECT_FOLDER}/interplay.min.md"
 MINIFIED_COMMITMENTS_PATH = f"{PROJECT_FOLDER}/commitments.min.md"
 PREAMBLE_PATH = f"{PROJECT_FOLDER}/preamble.md"
-DIGESTS_PATH = Path(PROJECT_FOLDER) / "digests"
-AGENTS_PATH = Path(PROJECT_FOLDER) / "agents"
+DIGESTS_PATH = f"{PROJECT_FOLDER}/digests"
+AGENTS_PATH = f"{PROJECT_FOLDER}/agents"
 OLD_LAYOUT_MOVES = (
-    (".manifestos.yaml", str(CONFIG_PATH)),
+    (".manifestos.yaml", CONFIG_PATH),
     (".manifestos.interplay.md", INTERPLAY_PATH),
     (".manifestos.commitments.md", COMMITMENTS_PATH),
     (".manifestos.interplay.min.md", MINIFIED_INTERPLAY_PATH),
     (".manifestos.commitments.min.md", MINIFIED_COMMITMENTS_PATH),
     (".manifestos.preamble.md", PREAMBLE_PATH),
-    (".claude/digests", str(DIGESTS_PATH)),
+    (".claude/digests", DIGESTS_PATH),
 )
 MAKE_PROJECT_FOLDER = f"mkdir -p {PROJECT_FOLDER}"
 OTHER_KEY = "other"
