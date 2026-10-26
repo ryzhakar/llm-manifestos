@@ -25,13 +25,13 @@ from unharness.config import (
     TEXT_ENCODING,
     Config,
     Element,
+    KeyMatch,
     UnharnessError,
     empty_key_message,
     load,
     no_subagent_key_message,
     old_layout,
     project_folder,
-    subagent_key,
     subagent_match,
 )
 from unharness.digests import (
@@ -121,7 +121,7 @@ def doctor(
     except UnharnessError as error:
         return [*layout, Finding(Status.FAIL, "config", str(error)), *host]
     plugin = manifesto_plugin_dir(config.registry, login)
-    matched = None if modes.agent is None else subagent_key(modes.agent, list(config.subagents))
+    match = None if modes.agent is None else subagent_match(modes.agent, list(config.subagents))
     outcomes = [_resolve_element(element, config, login) for element in config.you]
     documents = [document for _, document in outcomes]
     stack = None if not documents or None in documents else documents
@@ -145,8 +145,8 @@ def doctor(
         _stack_finding("stack you", _elements_problem(outcomes, EMPTY_STACK_MESSAGE), len(outcomes), loaded=loads_you),
         *skills,
         *on_stack,
-        *_agent_match_findings(modes.agent, list(config.subagents)),
-        *_subagent_findings(config, login, modes, matched),
+        *_agent_match_findings(modes.agent, match, list(config.subagents)),
+        *_subagent_findings(config, login, modes, None if match is None else match.key),
         _preamble_finding(config.directory),
         *host,
         *size,
@@ -190,12 +190,11 @@ def _stack_finding(name: str, problem: str | None, count: int, loaded: bool) -> 
     return Finding(Status.OK, name, f"{count} elements resolved")
 
 
-def _agent_match_findings(agent_type: str | None, keys: list[str]) -> list[Finding]:
+def _agent_match_findings(agent_type: str | None, match: KeyMatch | None, keys: list[str]) -> list[Finding]:
     """Report the subagents key the agent type matches, none without an agent type."""
     if agent_type is None:
         return []
     name = "agent match"
-    match = subagent_match(agent_type, keys)
     if match is None:
         return [Finding(Status.FAIL, name, no_subagent_key_message(agent_type, keys))]
     if match.by_default:
