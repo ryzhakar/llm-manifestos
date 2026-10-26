@@ -505,7 +505,7 @@ Claude Code takes one `--settings`, and launch adds its own after `LAUNCHER ARGS
 
 ## Docs
 
-`plugin/README.md`, `README.template.md` (then `just readme`), the unharness README, and `plugin/SCHEMA.md` name the new paths; SCHEMA.md's title becomes `.manifestos/config.yaml Schema Reference`, its SubagentStart section points to `subagent_key` and calls `other:` the default stack, and its error table gains every message above. The skills compile-commitments, compile-digest, and manifesto-oath name `.manifestos/config.yaml` and `.manifestos/digests/`; the repo-local write-stack-digest skill saves to `.manifestos/digests/`. This repo moves its own files with the printed commands in the release commit.
+`plugin/README.md`, `README.template.md` (then `just readme`), the unharness README, and `plugin/SCHEMA.md` name the new paths; SCHEMA.md's title becomes `.manifestos/config.yaml Schema Reference`, its SubagentStart section points to `subagent_key` and calls `other:` the default stack, and its error table gains every message above. The skills compile-commitments, compile-digest, and manifesto-oath name `.manifestos/config.yaml` and `.manifestos/digests/` wherever they named the old paths (amendment 2026-10-26, orchestrator: manifesto-oath named no digest path, so it gains none); the repo-local write-stack-digest skill saves to `.manifestos/digests/`. This repo moves its own files with the printed commands in the release commit.
 
 ## Tests
 
