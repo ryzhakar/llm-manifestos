@@ -26,9 +26,11 @@ from unharness.config import (
     Config,
     Element,
     UnharnessError,
+    empty_key_message,
     load,
     no_subagent_key_message,
     old_layout,
+    project_folder,
     subagent_key,
     subagent_match,
 )
@@ -111,7 +113,7 @@ def doctor(
         _uv_finding(environ),
         _manifesto_plugin_finding(login),
     ]
-    layout = _layout_findings(config_path.absolute().parent.parent)
+    layout = _layout_findings(project_folder(config_path))
     if has_failed(layout):
         return [*layout, *host]
     try:
@@ -210,7 +212,7 @@ def _subagent_finding(key: str, elements: list[Element], config: Config, login: 
     """Report the first problem in the key's elements, its empty list, and its four files, else that all is current."""
     name = f"stack subagents.{key}"
     outcomes = [_resolve_element(element, config, login) for element in elements]
-    problem = _elements_problem(outcomes, f"subagents.{key} is empty")
+    problem = _elements_problem(outcomes, empty_key_message(key))
     if problem:
         return Finding(Status.FAIL if is_matched else Status.WARN, name, problem)
     documents = [document for _, document in outcomes]

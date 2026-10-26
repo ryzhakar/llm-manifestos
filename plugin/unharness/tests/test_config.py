@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from helpers import write
 
-from unharness.config import Config, Element, UnharnessError, load, old_layout, subagent_key, subagent_match
+from unharness.config import Config, Element, UnharnessError, empty_key_message, load, old_layout, project_folder, subagent_key, subagent_match
 from unharness.resolve import resolve_stack
 
 CONFIG_SCRIPT = Path(__file__).parent.parent / "src" / "unharness" / "config.py"
@@ -232,6 +232,14 @@ def test_a_value_that_merely_starts_with_a_fold_sign_still_reads_as_text(tmp_pat
     config = load(write_config(tmp_path, "you:\n  - name: dry\n    purpose: > 3 homes\n"))
 
     assert config.you[0].purpose == "> 3 homes"
+
+
+def test_the_project_folder_is_the_parent_of_the_folder_holding_the_config(tmp_path):
+    assert project_folder(tmp_path / ".manifestos" / "config.yaml") == tmp_path
+
+
+def test_the_empty_key_message_names_the_key():
+    assert empty_key_message("worker") == "subagents.worker is empty"
 
 
 CASCADE = [

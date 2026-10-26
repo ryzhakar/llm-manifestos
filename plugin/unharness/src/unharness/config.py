@@ -102,9 +102,14 @@ def main(argv: list[str]) -> int:
     return 0
 
 
+def project_folder(config_path: Path) -> Path:
+    """Return the project folder that holds the .manifestos folder of the config file."""
+    return config_path.absolute().parent.parent
+
+
 def load(path: Path) -> Config:
     """Read the config file at path into a Config whose directory is the project folder; stop on an old layout."""
-    project = path.absolute().parent.parent
+    project = project_folder(path)
     _require_new_layout(project)
     root = parse_yaml(_config_text(path, project))
     if isinstance(root, list):
@@ -152,6 +157,11 @@ def _require_new_layout(project: Path) -> None:
 def no_subagent_key_message(agent_type: str, keys: list[str]) -> str:
     """Return the message for an agent type that matches no subagents key and finds no other:."""
     return f"{agent_type} matches no subagents key and the config has no other:; keys: {', '.join(keys) or 'none'}"
+
+
+def empty_key_message(key: str) -> str:
+    """Return the message for a subagents key whose list holds no elements."""
+    return f"subagents.{key} is empty"
 
 
 def _require_folder_name(key: str) -> None:
