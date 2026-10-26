@@ -27,3 +27,5 @@
 2026-10-26T19:30+0200 | agent:u1-core | receipt | U1 done: feat/4.0.0-core 8b2f114..a1241e1, report recon/2026-10-26/u1-report.md; checked: 352 package tests, clean tree; hook suite red by design (hooks unit)
 2026-10-26T19:30+0200 | self | decision | U2 rebased onto core and fast-forwarded (core ae4c735, 365 tests); settings worktree and branch removed
 2026-10-26T19:30+0200 | self | delegation | worktrees hooks (feat/4.0.0-hooks) and doctor (feat/4.0.0-doctor) from ae4c735; u3-hooks and u4-doctor (sonnet implementers, background) launched from prompts/u3-hooks.md, u4-doctor.md
+2026-10-26T19:30+0200 | agent:u1-core | receipt | U1 final: block-scalar wording matches the spec; parse_taglines.py left to hooks (u3-hooks told); U1 merged session/long-run into feat/4.0.0-core, so records commits ride the product branch
+2026-10-26T19:34+0200 | agent:u3-hooks | receipt | U3 done: feat/4.0.0-hooks d3742be..56d46de, hook suite 28, package 365; follow-ups sent: parse_taglines block-scalar message, no ":;" in the old-layout context line
