@@ -6,3 +6,8 @@
 2026-10-26T19:09+0200 | self | decision | peers: member id LLM_MANIFESTOS/manifesto-discovery from the one matching departed card; card moved back; commons 99 lines = commons_read 99; pointer 0.8.0 = loaded; no inbox; no wake kept (no work in hand). Alternative: mint LLM_MANIFESTOS/manifesto-steward after the session name
 2026-10-26T19:09+0200 | self | receipt | none; [notice] of rejoin and name change sent to proudhon (scribe)
 2026-10-26T19:09+0200 | self | discovery | the previous trace is mislabelled receipt; it records a sent notice, and nothing arrived
+2026-10-26T19:14+0200 | owner | decision | order: `prompt --agent` with a warning on fall-through to the default stack; an in-project folder; owner present for a short office-hours round (queue 58-63 written)
+2026-10-26T19:15+0200 | owner | decision | round: queue 56 dismissed, "this office hours session has a purpose. the question you raised is not it."; 56 stays unsolved; this round covers the --agent work alone (58-63)
+2026-10-26T19:16+0200 | owner | decision | round: 58 kept (one .manifestos/ folder), 59 kept (no fallback read; doctor and hooks print the mv commands), 60 alternative taken (key stays other:, called the default stack in the warning), 61 kept (hook cascade; warn on fall-through only)
+2026-10-26T19:17+0200 | owner | decision | round: 62 kept (exit 1 naming the type and keys); 63 answered "all at once": --agent, the folder move, the --settings merge, and stack --diff ship together as one major release, overriding entry 55 for this release
+2026-10-26T19:17+0200 | self | decision | round closed: 58-63 answered; 56 left unsolved after the owner dismissed it; older solved entries not raised, by the owner's word that this round has one purpose
