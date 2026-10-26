@@ -22,6 +22,7 @@ Run `env -i <strip> CLAUDE_CODE_ENABLE_TELEMETRY=1 OTEL_LOG_RAW_API_BODIES=file:
 Diff the system array and the first user message between the two captures; never compare only the model's reply.
 A switch is confirmed when the text it names is present without the switch and absent with it.
 Mark a switch whose capture shows no difference as failed; never carry it forward as untested.
+Confirm a switch that changes behavior and no request text, such as a compaction setting, by a binary check in place of a capture: the settings-schema literal, its validator, and its reader in the version's binary. Record such a switch with `control` false.
 </capture-each-candidate>
 
 <record-the-result>
