@@ -456,3 +456,29 @@ def test_an_unreadable_owner_settings_file_stops_launch_with_the_reason(tmp_path
 def test_owner_settings_that_are_no_json_object_stop_launch(value, file_text, tmp_path, capsys):
     with pytest.raises(UnharnessError, match=f"^--settings {re.escape(value)} is not a JSON object$"):
         launched_with(["--settings", value], tmp_path, capsys, lambda path: file_text)
+
+
+def test_the_owner_value_wins_a_shared_key_and_launch_notes_each_one_on_stderr(tmp_path, capsys):
+    argv, err = launched_with(["--settings", '{"outputStyle":"mine","model":"opus","autoMemoryEnabled":true}'], tmp_path, capsys)
+
+    assert list(settings_of(argv)) == ["outputStyle", "model", "autoMemoryEnabled", "includeGitInstructions", "attribution"]
+    assert settings_of(argv)["outputStyle"] == "mine" and settings_of(argv)["autoMemoryEnabled"] is True
+    assert err == (
+        "unharness: your --settings sets autoMemoryEnabled; the strip's value is left out\n"
+        "unharness: your --settings sets outputStyle; the strip's value is left out\n"
+    )
+
+def test_a_nested_owner_object_replaces_the_strips_whole_value(tmp_path, capsys):
+    argv, _ = launched_with(["--settings", '{"attribution":{"commit":"x"}}'], tmp_path, capsys)
+
+    assert settings_of(argv)["attribution"] == {"commit": "x"}
+
+
+def test_the_owner_settings_pass_alone_when_no_settings_entry_passes(tmp_path, capsys):
+    commands = []
+    launch(
+        PROMPT, Options(False, False, False, ["fake", "--settings", '{"model":"opus"}']), parse_switches(json.dumps([entry()])), {},
+        tmp_path, TERMINAL, lambda device: None, lambda argv, env: commands.append(argv) or 0, at_tested,
+    )
+
+    assert commands[0] == ["fake", "--system-prompt-file", str(cached_prompt(tmp_path)), "--settings", '{"model":"opus"}']

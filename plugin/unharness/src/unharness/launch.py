@@ -176,6 +176,8 @@ def _strip_arguments(prompt_file: Path, passed: Sequence[Switch], owner_settings
 
 def _merged_settings(owner: dict, strip: dict) -> dict:
     """Return the owner's keys in their order, then each strip key the owner did not set."""
+    for key in (key for key in strip if key in owner):
+        print(f"unharness: your {SETTINGS_FLAG} sets {key}; the strip's value is left out", file=sys.stderr)
     return {**owner, **{key: value for key, value in strip.items() if key not in owner}}
 
 
