@@ -76,6 +76,12 @@ class Config:
     registry: Path | None
 
 
+@dataclass(frozen=True)
+class KeyMatch:
+    key: str
+    by_default: bool
+
+
 def fail(error: UnharnessError, status: int = 1) -> int:
     """Print the failure as one line on stderr and return the exit status."""
     print(f"unharness: {error}", file=sys.stderr)
@@ -126,12 +132,6 @@ def load(path: Path) -> Config:
         directory=project,
         registry=(project / root["manifesto_dir"]).resolve() if root.get("manifesto_dir") else None,
     )
-
-
-@dataclass(frozen=True)
-class KeyMatch:
-    key: str
-    by_default: bool
 
 
 def old_layout(project: Path) -> list[str]:
