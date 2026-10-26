@@ -4,9 +4,8 @@ from dataclasses import dataclass
 from importlib.resources import files
 from pathlib import Path
 
-from unharness.config import TEXT_ENCODING
+from unharness.config import PREAMBLE_PATH, TEXT_ENCODING
 
-PREAMBLE_OVERRIDE_FILE = ".manifestos.preamble.md"
 SHIPPED_PREAMBLE = "shipped"
 
 
@@ -23,7 +22,7 @@ def read_if_present(path: Path) -> str | None:
 
 def load_preamble(directory: Path) -> Preamble:
     """Return the project's preamble override when it has one, else the preamble unharness ships."""
-    override = read_if_present(directory / PREAMBLE_OVERRIDE_FILE)
+    override = read_if_present(directory / PREAMBLE_PATH)
     if override is not None:
-        return Preamble(PREAMBLE_OVERRIDE_FILE, override)
+        return Preamble(PREAMBLE_PATH, override)
     return Preamble(SHIPPED_PREAMBLE, files("unharness").joinpath("preamble.md").read_text(encoding=TEXT_ENCODING))

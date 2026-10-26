@@ -40,11 +40,11 @@ class World:
             + (f"    purpose: {purposes[slug]}\n" if purposes.get(slug) else "")
             for slug in order
         )
-        self.config = write(self.project / ".manifestos.yaml", f"manifesto_dir: ../plugin\n\nyou:\n{entries}{tail}")
+        self.config = write(self.project / ".manifestos/config.yaml", f"manifesto_dir: ../plugin\n\nyou:\n{entries}{tail}")
 
     def digest(self, stem: str, text: str, place: str = "plugin", index: bool = True, hashes: dict | None = None) -> Path:
         slugs = stem.split("+")
-        folder = self.plugin / "digests" if place == "plugin" else self.project / ".claude" / "digests"
+        folder = self.plugin / "digests" if place == "plugin" else self.project / ".manifestos" / "digests"
         path = write((folder / "stacks" if place == "plugin" and len(slugs) > 1 else folder) / f"{stem}.md", text)
         if index:
             self.index(folder, {stem: hashes or {slug: source_hash(self.bodies[slug]) for slug in slugs}})
@@ -58,14 +58,14 @@ class World:
     def write_session_files(self) -> None:
         config = load(self.config)
         stack = stack_block(resolve_stack(config.you, config.directory, config.registry, self.login))
-        write(self.project / ".manifestos.interplay.md", f"{stack}\n\n<interplay>\nAgree.\n</interplay>\n")
-        write(self.project / ".manifestos.commitments.md", f"{stack}\n\n<commitments>\nI must, and I will.\n</commitments>\n")
+        write(self.project / ".manifestos/interplay.md", f"{stack}\n\n<interplay>\nAgree.\n</interplay>\n")
+        write(self.project / ".manifestos/commitments.md", f"{stack}\n\n<commitments>\nI must, and I will.\n</commitments>\n")
 
     def write_minified_files(self) -> None:
         config = load(self.config)
         stack = stack_block(resolve_stack(config.you, config.directory, config.registry, self.login))
-        write(self.project / ".manifestos.interplay.min.md", f"{stack}\n\n<interplay>\nAgree, briefly.\n</interplay>\n")
-        write(self.project / ".manifestos.commitments.min.md", f"{stack}\n\n<commitments>\nI must, briefly.\n</commitments>\n")
+        write(self.project / ".manifestos/interplay.min.md", f"{stack}\n\n<interplay>\nAgree, briefly.\n</interplay>\n")
+        write(self.project / ".manifestos/commitments.min.md", f"{stack}\n\n<commitments>\nI must, briefly.\n</commitments>\n")
 
     def run(self, monkeypatch, capsys, *arguments: str) -> tuple[int, str, str]:
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(self.login))
@@ -163,7 +163,7 @@ def test_a_manifesto_without_a_digest_refuses_naming_both_places_tried(world, mo
 
     status, out, err = world.prompt(monkeypatch, capsys, "--digests")
 
-    local, plugin = world.project / ".claude" / "digests" / "gamma.md", world.plugin / "digests" / "gamma.md"
+    local, plugin = world.project / ".manifestos" / "digests" / "gamma.md", world.plugin / "digests" / "gamma.md"
     assert (status, out) == (1, "")
     assert err == f"unharness: no digest for gamma: tried {local} and {plugin}; run /compile-digest gamma\n"
 
@@ -444,7 +444,7 @@ def stamp(world, monkeypatch, capsys, digest: Path):
 
 
 def test_stamp_creates_the_index_beside_a_local_digest_and_reports_it(world, monkeypatch, capsys):
-    digest = write(world.project / ".claude" / "digests" / "beta.md", "BETA DIGEST")
+    digest = write(world.project / ".manifestos" / "digests" / "beta.md", "BETA DIGEST")
 
     status, out, _ = stamp(world, monkeypatch, capsys, digest)
 
@@ -455,7 +455,7 @@ def test_stamp_creates_the_index_beside_a_local_digest_and_reports_it(world, mon
 
 
 def test_stamp_replaces_its_stems_entry_and_keeps_the_others(world, monkeypatch, capsys):
-    digest = write(world.project / ".claude" / "digests" / "beta.md", "BETA DIGEST")
+    digest = write(world.project / ".manifestos" / "digests" / "beta.md", "BETA DIGEST")
     world.index(digest.parent, {"beta": {"beta": "old"}, "alpha": {"alpha": "kept"}, "a+b": {"a": "1", "b": "2"}})
 
     stamp(world, monkeypatch, capsys, digest)
@@ -488,7 +488,7 @@ def test_stamp_hashes_equal_the_stack_blocks_hashes_for_the_same_manifestos(worl
 
 def test_a_stamped_digest_loads_under_digests_without_further_steps(world, monkeypatch, capsys):
     for slug in SLUGS:
-        stamp(world, monkeypatch, capsys, write(world.project / ".claude" / "digests" / f"{slug}.md", f"{slug} digest"))
+        stamp(world, monkeypatch, capsys, write(world.project / ".manifestos" / "digests" / f"{slug}.md", f"{slug} digest"))
 
     status, out, _ = world.prompt(monkeypatch, capsys, "--digests")
 
@@ -497,7 +497,7 @@ def test_a_stamped_digest_loads_under_digests_without_further_steps(world, monke
 
 @pytest.mark.parametrize("stem", ["beta+alpha", "alpha+alpha", "alpha++beta"])
 def test_stamp_refuses_a_stem_that_is_not_sorted_distinct_slugs(world, monkeypatch, capsys, stem):
-    digest = write(world.project / ".claude" / "digests" / f"{stem}.md", "text")
+    digest = write(world.project / ".manifestos" / "digests" / f"{stem}.md", "text")
 
     status, out, err = stamp(world, monkeypatch, capsys, digest)
 
@@ -507,7 +507,7 @@ def test_stamp_refuses_a_stem_that_is_not_sorted_distinct_slugs(world, monkeypat
 
 
 def test_stamp_refuses_a_slug_that_does_not_resolve_with_the_resolvers_message(world, monkeypatch, capsys):
-    digest = write(world.project / ".claude" / "digests" / "ghost.md", "text")
+    digest = write(world.project / ".manifestos" / "digests" / "ghost.md", "text")
 
     status, _, err = stamp(world, monkeypatch, capsys, digest)
 
@@ -516,7 +516,7 @@ def test_stamp_refuses_a_slug_that_does_not_resolve_with_the_resolvers_message(w
 
 
 def test_stamp_refuses_a_missing_digest(world, monkeypatch, capsys):
-    missing = world.project / ".claude" / "digests" / "beta.md"
+    missing = world.project / ".manifestos" / "digests" / "beta.md"
 
     status, _, err = stamp(world, monkeypatch, capsys, missing)
 
@@ -525,7 +525,7 @@ def test_stamp_refuses_a_missing_digest(world, monkeypatch, capsys):
 
 
 def test_stamp_refuses_a_malformed_index_instead_of_overwriting_it(world, monkeypatch, capsys):
-    digest = write(world.project / ".claude" / "digests" / "beta.md", "text")
+    digest = write(world.project / ".manifestos" / "digests" / "beta.md", "text")
     index = write(digest.parent / "index.json", "not json")
 
     status, _, err = stamp(world, monkeypatch, capsys, digest)
@@ -536,7 +536,7 @@ def test_stamp_refuses_a_malformed_index_instead_of_overwriting_it(world, monkey
 
 @pytest.mark.parametrize("flag", MODE_FLAGS)
 def test_stamp_rejects_the_mode_flags(world, monkeypatch, capsys, flag):
-    digest = write(world.project / ".claude" / "digests" / "beta.md", "text")
+    digest = write(world.project / ".manifestos" / "digests" / "beta.md", "text")
 
     with pytest.raises(SystemExit) as stopped:
         world.run(monkeypatch, capsys, "stamp", str(digest), flag)

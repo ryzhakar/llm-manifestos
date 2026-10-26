@@ -37,8 +37,8 @@ def stopped_by(interplay, commitments, documents=(DRY, KISS)) -> str:
 
 
 def test_a_missing_session_file_stops_the_prompt_and_names_the_skill_that_writes_it():
-    assert stopped_by(INTERPLAY, None) == ".manifestos.commitments.md is missing; run /compile-commitments"
-    assert stopped_by(None, None) == ".manifestos.interplay.md is missing; run /compile-commitments"
+    assert stopped_by(INTERPLAY, None) == ".manifestos/commitments.md is missing; run /compile-commitments"
+    assert stopped_by(None, None) == ".manifestos/interplay.md is missing; run /compile-commitments"
 
 
 def test_a_session_file_written_for_another_stack_names_each_changed_element():
@@ -46,25 +46,25 @@ def test_a_session_file_written_for_another_stack_names_each_changed_element():
     added = Document("yagni", None, "YAGNI TEXT", "d" * 64)
 
     assert stopped_by(INTERPLAY, COMMITMENTS, [edited_dry, KISS]) == (
-        ".manifestos.interplay.md is stale (changed: dry); run /compile-commitments"
+        ".manifestos/interplay.md is stale (changed: dry); run /compile-commitments"
     )
     assert stopped_by(INTERPLAY, COMMITMENTS, [DRY, KISS, added]) == (
-        ".manifestos.interplay.md is stale (changed: yagni); run /compile-commitments"
+        ".manifestos/interplay.md is stale (changed: yagni); run /compile-commitments"
     )
     assert stopped_by(INTERPLAY, COMMITMENTS, [DRY]) == (
-        ".manifestos.interplay.md is stale (changed: kiss); run /compile-commitments"
+        ".manifestos/interplay.md is stale (changed: kiss); run /compile-commitments"
     )
 
 
 def test_a_session_file_written_for_the_same_elements_in_another_order_is_stale():
     assert stopped_by(INTERPLAY, COMMITMENTS, [KISS, DRY]) == (
-        ".manifestos.interplay.md is stale (reordered); run /compile-commitments"
+        ".manifestos/interplay.md is stale (reordered); run /compile-commitments"
     )
 
 
 def test_a_session_file_without_a_stack_block_is_stale():
     assert stopped_by("<interplay>\nx\n</interplay>\n", COMMITMENTS) == (
-        ".manifestos.interplay.md has no <stack> block; run /compile-commitments"
+        ".manifestos/interplay.md has no <stack> block; run /compile-commitments"
     )
 
 

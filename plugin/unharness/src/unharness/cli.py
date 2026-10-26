@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from unharness.compile import FULL_FILES, MINIFIED_FILES, compile_prompt, stack_view
-from unharness.config import EMPTY_STACK_MESSAGE, UnharnessError, fail, load
+from unharness.config import CONFIG_PATH, EMPTY_STACK_MESSAGE, UnharnessError, fail, load
 from unharness.digests import DIGESTS_FLAG, OVERLAP_FLAG, STACK_DIGESTS_FLAG, constitution_blocks, digest_mode, stamp_digest
 from unharness.doctor import Modes, claude_version, doctor, has_failed
 from unharness.launch import Options, cache_home, execute_launcher, launch, reopen_terminal, version_output, terminal_device
@@ -14,7 +14,6 @@ from unharness.resolve import login_dir, manifesto_elements, manifesto_plugin_di
 from unharness.session import load_preamble, read_if_present
 from unharness.switches import shipped_switches, strip_table
 
-DEFAULT_CONFIG = Path(".manifestos.yaml")
 PROMPT_VERB = "prompt"
 STACK_VERB = "stack"
 STAMP_VERB = "stamp"
@@ -52,12 +51,12 @@ def _run(argv: list[str]) -> int:
     stack_parser = verbs.add_parser(STACK_VERB)
     stack_parser.add_argument("slugs", nargs="*")
     for parser_of_verb in (prompt_parser, stack_parser):
-        parser_of_verb.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
+        parser_of_verb.add_argument("--config", type=Path, default=CONFIG_PATH)
     for flag in MODE_FLAGS:
         prompt_parser.add_argument(flag, action="store_true")
     stamp_parser = verbs.add_parser(STAMP_VERB)
     stamp_parser.add_argument("digest", type=Path)
-    stamp_parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
+    stamp_parser.add_argument("--config", type=Path, default=CONFIG_PATH)
     launch_parser = verbs.add_parser(LAUNCH_VERB)
     launch_parser.add_argument("prompt", nargs="?")
     for flag in ("--keep-claude-md", "--keep-web-search", "--no-hooks"):
@@ -65,7 +64,7 @@ def _run(argv: list[str]) -> int:
     launch_parser.add_argument(CLAUDE_VERSION_FLAG)
     verbs.add_parser(SWITCHES_VERB)
     doctor_parser = verbs.add_parser(DOCTOR_VERB)
-    doctor_parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
+    doctor_parser.add_argument("--config", type=Path, default=CONFIG_PATH)
     doctor_parser.add_argument(CLAUDE_VERSION_FLAG)
     for flag in MODE_FLAGS:
         doctor_parser.add_argument(flag, action="store_true")

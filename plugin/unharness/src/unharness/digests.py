@@ -4,10 +4,9 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from unharness.config import TEXT_ENCODING, Element, UnharnessError
+from unharness.config import DIGESTS_PATH, TEXT_ENCODING, Element, UnharnessError
 from unharness.resolve import Document, manifesto_elements, manifesto_slug, resolve_stack
 
-LOCAL_FOLDER = Path(".claude") / "digests"
 PLUGIN_FOLDER = "digests"
 STACKS_FOLDER = "stacks"
 INDEX_FILE = "index.json"
@@ -109,14 +108,14 @@ def locate_single(slug: str, directory: Path, plugin_folder: Path) -> Located | 
 def _single_paths(slug: str, directory: Path, plugin_folder: Path) -> tuple[tuple[str, Path], tuple[str, Path]]:
     """Return the two places a single digest may live, as (place, path), the local one first."""
     file_name = f"{slug}.md"
-    return (LOCAL, directory / LOCAL_FOLDER / file_name), (PLUGIN, plugin_folder / PLUGIN_FOLDER / file_name)
+    return (LOCAL, directory / DIGESTS_PATH / file_name), (PLUGIN, plugin_folder / PLUGIN_FOLDER / file_name)
 
 
 def locate_stacks(slugs: list[str], directory: Path, plugin_folder: Path) -> list[Located]:
     """Return every stack digest whose slugs all belong to slugs, the local one before the plugin's for one stem."""
     members = set(slugs)
     found: dict[str, Located] = {}
-    for place, folder in ((PLUGIN, plugin_folder / PLUGIN_FOLDER / STACKS_FOLDER), (LOCAL, directory / LOCAL_FOLDER)):
+    for place, folder in ((PLUGIN, plugin_folder / PLUGIN_FOLDER / STACKS_FOLDER), (LOCAL, directory / DIGESTS_PATH)):
         for path in sorted(folder.glob("*.md")):
             parts = slugs_of(path.stem)
             if len(parts) > 1 and parts == sorted(set(parts)) and members.issuperset(parts):

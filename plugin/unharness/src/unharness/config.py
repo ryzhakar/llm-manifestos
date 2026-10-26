@@ -1,4 +1,4 @@
-"""Read a project's .manifestos.yaml into a Config, with the YAML subset reader the file needs."""
+"""Name a project's files under .manifestos/ and read its config.yaml into a Config, with the YAML subset reader the file needs."""
 
 from __future__ import annotations
 
@@ -15,6 +15,25 @@ MANIFESTO_SOURCE = "manifesto"
 SKILL_SOURCE = "skill"
 FILE_SOURCE = "file"
 CLAUDE_MD = "CLAUDE.md"
+PROJECT_FOLDER = ".manifestos"
+CONFIG_PATH = Path(PROJECT_FOLDER) / "config.yaml"
+INTERPLAY_PATH = f"{PROJECT_FOLDER}/interplay.md"
+COMMITMENTS_PATH = f"{PROJECT_FOLDER}/commitments.md"
+MINIFIED_INTERPLAY_PATH = f"{PROJECT_FOLDER}/interplay.min.md"
+MINIFIED_COMMITMENTS_PATH = f"{PROJECT_FOLDER}/commitments.min.md"
+PREAMBLE_PATH = f"{PROJECT_FOLDER}/preamble.md"
+DIGESTS_PATH = Path(PROJECT_FOLDER) / "digests"
+AGENTS_PATH = Path(PROJECT_FOLDER) / "agents"
+OLD_LAYOUT_MOVES = (
+    (".manifestos.yaml", str(CONFIG_PATH)),
+    (".manifestos.interplay.md", INTERPLAY_PATH),
+    (".manifestos.commitments.md", COMMITMENTS_PATH),
+    (".manifestos.interplay.min.md", MINIFIED_INTERPLAY_PATH),
+    (".manifestos.commitments.min.md", MINIFIED_COMMITMENTS_PATH),
+    (".manifestos.preamble.md", PREAMBLE_PATH),
+    (".claude/digests", str(DIGESTS_PATH)),
+)
+MAKE_PROJECT_FOLDER = f"mkdir -p {PROJECT_FOLDER}"
 OTHER_KEY = "other"
 NAMESPACE_SEPARATOR = ":"
 FOLDER_KEY_PARTS = ("/",)
@@ -64,12 +83,12 @@ def fail(error: UnharnessError, status: int = 1) -> int:
 
 
 def main(argv: list[str]) -> int:
-    """Print the config at argv's path as JSON for a shell hook; fail in one line, with status 2 when no config exists."""
-    parser = argparse.ArgumentParser(description="Print a .manifestos.yaml as JSON.")
-    parser.add_argument("path", type=Path)
+    """Print the config of argv's project folder as JSON for a shell hook; fail with status 2 when no config exists."""
+    parser = argparse.ArgumentParser(description="Print a project's .manifestos/config.yaml as JSON.")
+    parser.add_argument("--project", type=Path, required=True)
     parser.add_argument("--json", action="store_true", required=True)
     try:
-        config = load(parser.parse_args(argv).path)
+        config = load(parser.parse_args(argv).project / CONFIG_PATH)
     except MissingConfigError as error:
         return fail(error, MISSING_CONFIG_STATUS)
     except UnharnessError as error:
@@ -84,8 +103,10 @@ def main(argv: list[str]) -> int:
 
 
 def load(path: Path) -> Config:
-    """Read the config file at path into a Config."""
-    root = parse_yaml(_config_text(path))
+    """Read the config file at path into a Config whose directory is the project folder; stop on an old layout."""
+    project = path.absolute().parent.parent
+    _require_new_layout(project)
+    root = parse_yaml(_config_text(path, project))
     if isinstance(root, list):
         root = {"you": root}
     root = root or {}
@@ -97,9 +118,29 @@ def load(path: Path) -> Config:
     return Config(
         you=_elements(root.get("you") or [], "you"),
         subagents={role: _elements(items or [], f"subagents.{role}") for role, items in roles.items()},
-        directory=path.parent,
-        registry=(path.parent / root["manifesto_dir"]).resolve() if root.get("manifesto_dir") else None,
+        directory=project,
+        registry=(project / root["manifesto_dir"]).resolve() if root.get("manifesto_dir") else None,
     )
+
+
+def old_layout(project: Path) -> list[str]:
+    """Return the commands, run in the project folder, that move each old path present to its new place."""
+    present = [(old, new) for old, new in OLD_LAYOUT_MOVES if (project / old).exists()]
+    moves = [_move_command(project, old, new) for old, new in present]
+    needs_folder = any(move.startswith("mv ") for move in moves)
+    return [MAKE_PROJECT_FOLDER] * needs_folder + moves
+
+
+def _move_command(project: Path, old: str, new: str) -> str:
+    if (project / new).exists():
+        return f"# both {old} and {new} exist; keep one and delete the other"
+    return f"mv {old} {new}"
+
+
+def _require_new_layout(project: Path) -> None:
+    commands = old_layout(project)
+    if commands:
+        raise UnharnessError("\n".join([f"old layout in {project}; run these there:", *commands]))
 
 
 def _require_folder_name(key: str) -> None:
@@ -117,10 +158,10 @@ def subagent_key(agent_type: str, keys: list[str]) -> str | None:
     return next((key for key in [agent_type, local_name, *suffix_keys] if key in keys), default)
 
 
-def _config_text(path: Path) -> str:
+def _config_text(path: Path, project: Path) -> str:
     if path.is_file():
         return path.read_text(encoding=TEXT_ENCODING)
-    claude_md = path.parent / CLAUDE_MD
+    claude_md = project / CLAUDE_MD
     section = ACTIVE_MANIFESTOS_SECTION.search(claude_md.read_text(encoding=TEXT_ENCODING)) if claude_md.is_file() else None
     if not section:
         raise MissingConfigError(f"no config: tried {path} and the Active Manifestos section of {claude_md}")

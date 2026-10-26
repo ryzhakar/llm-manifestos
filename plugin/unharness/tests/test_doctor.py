@@ -50,13 +50,13 @@ def doctor(capsys, *arguments: str) -> tuple[int, list[str]]:
 
 
 def test_a_missing_config_fails_and_leaves_only_the_three_checks_that_need_no_config(host, capsys):
-    status, lines = doctor(capsys, "--config", str(host / "project" / ".manifestos.yaml"))
+    status, lines = doctor(capsys, "--config", str(host / "project" / ".manifestos/config.yaml"))
 
     assert status == 1
     assert [line.split(":")[0] for line in lines] == [
         "FAIL config", "OK claude", "OK switch registry", *(f"OK {name}" for name in SWITCH_NAMES), "OK uv", "OK manifesto plugin",
     ]
-    assert lines[0].startswith(f"FAIL config: no config: tried {host / 'project' / '.manifestos.yaml'}")
+    assert lines[0].startswith(f"FAIL config: no config: tried {host / 'project' / '.manifestos/config.yaml'}")
     assert lines[1] == f"OK claude: {host / 'bin' / 'claude'} {TESTED_CLAUDE}"
     assert lines[-2] == f"OK uv: {host / 'bin' / 'uv'} {host / 'bin' / 'uvx'}"
     assert lines[-1] == "OK manifesto plugin: 3.6.0"
@@ -64,7 +64,7 @@ def test_a_missing_config_fails_and_leaves_only_the_three_checks_that_need_no_co
 
 @pytest.fixture
 def missing_config(host) -> list[str]:
-    return ["--config", str(host / "project" / ".manifestos.yaml")]
+    return ["--config", str(host / "project" / ".manifestos/config.yaml")]
 
 
 def finding(lines: list[str], name: str) -> str:
@@ -145,7 +145,7 @@ def project(host) -> Path:
     write(login / CACHE / "manifesto" / MANIFESTO_PLUGIN_VERSION / "manifestos" / "dry.md", "---\ntitle: Dry\n---\n\n# Dry\n\nOne home.\n")
     write(login / CACHE / "agent-conduct" / SKILL_PLUGIN_VERSION / "skills" / "write-well" / "SKILL.md", "---\nname: write-well\n---\nWell.\n")
     record_installed(login, manifesto=MANIFESTO_PLUGIN_VERSION, **{"agent-conduct": SKILL_PLUGIN_VERSION})
-    return write(host / "project" / ".manifestos.yaml", CONFIG)
+    return write(host / "project" / ".manifestos/config.yaml", CONFIG)
 
 
 def test_each_element_reports_the_path_it_resolved_to(host, project, capsys):
@@ -203,8 +203,8 @@ def test_a_plugin_skill_that_does_not_resolve_fails_as_an_element_and_gets_no_ve
     assert not [line for line in lines if " skill nowhere:absent:" in line]
 
 
-FULL_PAIR = (".manifestos.interplay.md", ".manifestos.commitments.md")
-MINIFIED_PAIR = (".manifestos.interplay.min.md", ".manifestos.commitments.min.md")
+FULL_PAIR = (".manifestos/interplay.md", ".manifestos/commitments.md")
+MINIFIED_PAIR = (".manifestos/interplay.min.md", ".manifestos/commitments.min.md")
 WRITING_SKILL = "/compile-commitments"
 
 
@@ -212,7 +212,7 @@ def write_session_files(project: Path, login: Path, names: tuple[str, ...], body
     config = load(project)
     block = stack_block(resolve_stack(config.you, config.directory, config.registry, login))
     for name in names:
-        write(project.parent / name, f"{block}\n\n{body}")
+        write(project.parent.parent / name, f"{block}\n\n{body}")
 
 
 def test_the_shipped_preamble_is_reported_when_the_project_has_no_override(host, project, capsys):
@@ -222,11 +222,11 @@ def test_the_shipped_preamble_is_reported_when_the_project_has_no_override(host,
 
 
 def test_a_preamble_override_is_reported_by_its_file_name(host, project, capsys):
-    write(project.parent / ".manifestos.preamble.md", "Mine.\n")
+    write(project.parent.parent / ".manifestos/preamble.md", "Mine.\n")
 
     _, lines = doctor(capsys, "--config", str(project))
 
-    assert finding(lines, "preamble") == "OK preamble: .manifestos.preamble.md"
+    assert finding(lines, "preamble") == "OK preamble: .manifestos/preamble.md"
 
 
 def test_current_session_files_are_ok(host, project, capsys):
@@ -324,8 +324,8 @@ def test_a_digest_line_names_where_the_digest_lives_and_that_it_is_current(host,
 
 @needs_digests
 def test_a_local_digest_wins_over_the_plugins(host, healthy, capsys):
-    write(healthy.parent / ".claude" / "digests" / "dry.md", "Local dry.")
-    stamp(host, healthy, healthy.parent / ".claude" / "digests", "dry")
+    write(healthy.parent.parent / ".manifestos" / "digests" / "dry.md", "Local dry.")
+    stamp(host, healthy, healthy.parent.parent / ".manifestos" / "digests", "dry")
 
     _, lines = doctor(capsys, "--config", str(healthy))
 
@@ -336,7 +336,7 @@ def test_a_local_digest_wins_over_the_plugins(host, healthy, capsys):
 def test_a_missing_single_digest_warns_without_flags_and_fails_under_digests(host, healthy, capsys):
     (plugin_folder(host) / "digests" / "kiss.md").unlink()
     expected = (
-        f"digest kiss: no digest for kiss: tried {healthy.parent / '.claude' / 'digests' / 'kiss.md'} "
+        f"digest kiss: no digest for kiss: tried {healthy.parent.parent / '.manifestos' / 'digests' / 'kiss.md'} "
         f"and {plugin_folder(host) / 'digests' / 'kiss.md'}; run /compile-digest kiss"
     )
 
@@ -534,7 +534,7 @@ def test_prompt_size_counts_the_preamble_the_constitution_and_the_session_file_b
     write(plugin_folder(host) / "digests" / "dry.md", "Short.")
     stamp(host, project, plugin_folder(host) / "digests", "dry")
     write_session_files(project, host / "login", FULL_PAIR + MINIFIED_PAIR)
-    write(project.parent / ".manifestos.preamble.md", "Alpha beta.")
+    write(project.parent.parent / ".manifestos/preamble.md", "Alpha beta.")
 
     _, lines = doctor(capsys, "--config", str(project))
 

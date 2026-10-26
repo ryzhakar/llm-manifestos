@@ -4,15 +4,17 @@ import sys
 from pathlib import Path
 
 import pytest
+from helpers import write
 
-from unharness.config import Config, Element, UnharnessError, load, subagent_key
+from unharness.config import Config, Element, UnharnessError, load, old_layout, subagent_key
 from unharness.resolve import resolve_stack
 
 CONFIG_SCRIPT = Path(__file__).parent.parent / "src" / "unharness" / "config.py"
 
 
 def write_config(folder: Path, text: str) -> Path:
-    path = folder / ".manifestos.yaml"
+    path = folder / ".manifestos" / "config.yaml"
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text)
     return path
 
@@ -107,15 +109,15 @@ def test_a_colon_without_a_space_after_it_is_part_of_a_bare_name(tmp_path):
 def test_without_a_config_file_the_active_manifestos_section_of_claude_md_is_the_config(tmp_path):
     (tmp_path / "CLAUDE.md").write_text("# Notes\n\n## Active Manifestos\n- dry\n- kiss\n\n## Other\n- yagni\n")
 
-    assert [element.name for element in load(tmp_path / ".manifestos.yaml").you] == ["dry", "kiss"]
+    assert [element.name for element in load(tmp_path / ".manifestos/config.yaml").you] == ["dry", "kiss"]
 
 
 def test_a_missing_config_names_every_place_it_looked(tmp_path):
     with pytest.raises(UnharnessError) as failure:
-        load(tmp_path / ".manifestos.yaml")
+        load(tmp_path / ".manifestos/config.yaml")
 
     assert str(failure.value) == (
-        f"no config: tried {tmp_path / '.manifestos.yaml'} and the Active Manifestos section of {tmp_path / 'CLAUDE.md'}"
+        f"no config: tried {tmp_path / '.manifestos/config.yaml'} and the Active Manifestos section of {tmp_path / 'CLAUDE.md'}"
     )
 
 
@@ -128,7 +130,7 @@ def run_config_script(*arguments: str) -> subprocess.CompletedProcess:
 def test_a_shell_hook_reads_the_stack_as_json_by_running_the_module_by_path(tmp_path):
     path = write_config(tmp_path, "manifesto_dir: /m\nyou:\n  - dry\nsubagents:\n  other:\n    - name: kiss\n      purpose: p\n")
 
-    run = run_config_script(str(path), "--json")
+    run = run_config_script("--json", "--project", str(path.parent.parent))
 
     assert run.returncode == 0
     assert json.loads(run.stdout) == {
@@ -140,14 +142,14 @@ def test_a_shell_hook_reads_the_stack_as_json_by_running_the_module_by_path(tmp_
 
 
 def test_a_script_run_on_a_broken_config_prints_one_line_and_exits_1(tmp_path):
-    run = run_config_script(str(write_config(tmp_path, "you: [dry]\n")), "--json")
+    run = run_config_script("--json", "--project", str(write_config(tmp_path, "you: [dry]\n").parent.parent))
 
     assert (run.returncode, run.stdout) == (1, "")
     assert run.stderr == "unharness: you must be a list of elements\n"
 
 
 def test_a_script_run_with_no_config_prints_one_line_and_exits_2_so_a_hook_can_tell_it_apart(tmp_path):
-    run = run_config_script(str(tmp_path / ".manifestos.yaml"), "--json")
+    run = run_config_script("--json", "--project", str(tmp_path))
 
     assert (run.returncode, run.stdout) == (2, "")
     assert run.stderr.startswith("unharness: no config: tried ")
@@ -184,11 +186,10 @@ def test_a_source_that_is_not_manifesto_skill_or_file_with_a_reference_stops_the
 
 def test_a_relative_manifesto_dir_resolves_once_against_the_config_folder(login, tmp_path):
     project = tmp_path / "project"
-    project.mkdir()
     path = write_config(project, "manifesto_dir: ../registry\nyou:\n  - nope\n")
     registry = (tmp_path / "registry").resolve()
 
-    run = run_config_script(str(path), "--json")
+    run = run_config_script("--json", "--project", str(path.parent.parent))
     with pytest.raises(UnharnessError) as failure:
         config = load(path)
         resolve_stack(config.you, config.directory, config.registry, login)
@@ -261,3 +262,88 @@ def test_a_subagents_key_that_cannot_name_a_folder_stops_the_load(tmp_path, key)
         load(path)
 
     assert str(failure.value) == f"subagents key '{key}' cannot name a folder"
+
+
+OLD_PATHS = [
+    (".manifestos.yaml", ".manifestos/config.yaml"),
+    (".manifestos.interplay.md", ".manifestos/interplay.md"),
+    (".manifestos.commitments.md", ".manifestos/commitments.md"),
+    (".manifestos.interplay.min.md", ".manifestos/interplay.min.md"),
+    (".manifestos.commitments.min.md", ".manifestos/commitments.min.md"),
+    (".manifestos.preamble.md", ".manifestos/preamble.md"),
+    (".claude/digests", ".manifestos/digests"),
+]
+
+
+def make_old(project: Path, *paths: str) -> None:
+    for path in paths:
+        target = project / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.mkdir() if path.endswith("digests") else target.write_text("x")
+
+
+@pytest.mark.parametrize("old, new", OLD_PATHS)
+def test_each_old_path_alone_yields_the_mkdir_and_its_own_move(tmp_path, old, new):
+    make_old(tmp_path, old)
+
+    assert old_layout(tmp_path) == ["mkdir -p .manifestos", f"mv {old} {new}"]
+
+
+def test_every_old_path_yields_its_move_in_the_documented_order(tmp_path):
+    make_old(tmp_path, *reversed([old for old, _ in OLD_PATHS]))
+
+    assert old_layout(tmp_path) == ["mkdir -p .manifestos", *[f"mv {old} {new}" for old, new in OLD_PATHS]]
+
+
+def test_a_project_in_the_new_layout_yields_no_commands(tmp_path):
+    write_config(tmp_path, "you:\n  - dry\n")
+
+    assert old_layout(tmp_path) == []
+
+
+def test_an_existing_new_path_yields_a_both_line_in_place_of_the_move(tmp_path):
+    make_old(tmp_path, ".manifestos.yaml", ".manifestos.preamble.md", ".manifestos/preamble.md")
+
+    assert old_layout(tmp_path) == [
+        "mkdir -p .manifestos",
+        "mv .manifestos.yaml .manifestos/config.yaml",
+        "# both .manifestos.preamble.md and .manifestos/preamble.md exist; keep one and delete the other",
+    ]
+
+
+def test_when_every_new_path_exists_there_is_no_mkdir(tmp_path):
+    make_old(tmp_path, ".manifestos.yaml", ".manifestos/config.yaml")
+
+    assert old_layout(tmp_path) == ["# both .manifestos.yaml and .manifestos/config.yaml exist; keep one and delete the other"]
+
+
+def test_an_old_layout_stops_the_load_with_the_commands_before_it_looks_for_a_config(tmp_path):
+    make_old(tmp_path, ".manifestos.yaml", ".claude/digests")
+
+    with pytest.raises(UnharnessError) as failure:
+        load(tmp_path / ".manifestos" / "config.yaml")
+
+    assert str(failure.value) == (
+        f"old layout in {tmp_path}; run these there:\n"
+        "mkdir -p .manifestos\nmv .manifestos.yaml .manifestos/config.yaml\nmv .claude/digests .manifestos/digests"
+    )
+
+
+def test_a_script_run_on_an_old_layout_prints_the_commands_and_exits_1(tmp_path):
+    make_old(tmp_path, ".manifestos.yaml")
+
+    run = run_config_script("--json", "--project", str(tmp_path))
+
+    assert (run.returncode, run.stdout) == (1, "")
+    assert run.stderr == (
+        f"unharness: old layout in {tmp_path}; run these there:\nmkdir -p .manifestos\nmv .manifestos.yaml .manifestos/config.yaml\n"
+    )
+
+
+def test_a_file_source_resolves_against_the_project_folder(login, tmp_path):
+    write(tmp_path / "notes" / "rules.md", "Rules.\n")
+    config = load(write_config(tmp_path, "you:\n  - source: file notes/rules.md\n"))
+
+    documents = resolve_stack(config.you, config.directory, config.registry, login)
+
+    assert documents[0].text.strip() == "Rules."

@@ -4,14 +4,16 @@ import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from unharness.config import UnharnessError
+from unharness.config import (
+    COMMITMENTS_PATH,
+    INTERPLAY_PATH,
+    MINIFIED_COMMITMENTS_PATH,
+    MINIFIED_INTERPLAY_PATH,
+    UnharnessError,
+)
 from unharness.resolve import Document
 
 STACK_BLOCK = re.compile(r"\A<stack>\n(.*?)\n</stack>\n*", re.S)
-INTERPLAY_FILE = ".manifestos.interplay.md"
-COMMITMENTS_FILE = ".manifestos.commitments.md"
-MINIFIED_INTERPLAY_FILE = ".manifestos.interplay.min.md"
-MINIFIED_COMMITMENTS_FILE = ".manifestos.commitments.min.md"
 DOUBLE_QUOTE = '"'
 SINGLE_QUOTE = "'"
 WRITING_SKILL = "/compile-commitments"
@@ -23,8 +25,8 @@ class SessionFiles:
     commitments: str
 
 
-FULL_FILES = SessionFiles(INTERPLAY_FILE, COMMITMENTS_FILE)
-MINIFIED_FILES = SessionFiles(MINIFIED_INTERPLAY_FILE, MINIFIED_COMMITMENTS_FILE)
+FULL_FILES = SessionFiles(INTERPLAY_PATH, COMMITMENTS_PATH)
+MINIFIED_FILES = SessionFiles(MINIFIED_INTERPLAY_PATH, MINIFIED_COMMITMENTS_PATH)
 
 
 def compile_prompt(
