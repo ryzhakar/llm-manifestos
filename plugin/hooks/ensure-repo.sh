@@ -38,7 +38,7 @@ first_message_line() {
 
 # Print the line that tells the session why no manifesto is bound.
 unbound_line() {
-    printf 'No manifesto bound: %s; run unharness doctor for the fix.\n' "$CONFIG_ERROR"
+    printf 'No manifesto bound: %s; run unharness doctor for the fix.\n' "${CONFIG_ERROR%:}"
 }
 
 # Wrap stdin in the hookSpecificOutput JSON of the named hook event.

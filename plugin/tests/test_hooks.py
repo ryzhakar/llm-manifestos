@@ -135,7 +135,9 @@ class ConfigProblems(unittest.TestCase):
             first, *commands = r.stderr.removeprefix("unharness: ").splitlines()
             self.assertEqual(first, "old layout in " + r.project + "; run these there:", script)
             self.assertEqual(commands, ["mkdir -p .manifestos", "mv .manifestos.yaml .manifestos/config.yaml"], script)
-            self.assertEqual(bound_line(script, r.stdout), unbound_line(first), script)
+            self.assertEqual(
+                bound_line(script, r.stdout),
+                f"No manifesto bound: old layout in {r.project}; run these there; run unharness doctor for the fix.", script)
 
     def test_drift_reminder_keeps_stderr_alone_on_an_old_layout(self):
         r = run_hook("drift-reminder.sh", None, files={".manifestos.yaml": HAPPY})
