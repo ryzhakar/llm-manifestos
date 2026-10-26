@@ -32,7 +32,7 @@ VERSION_FLAG = "--version"
 VERSION_TIMEOUT_SECONDS = 10
 INTERACTIVE_COMMAND_FLAG = "-ic"
 OPTION_ATTRIBUTES = {
-    "--keep-claude-md": "keep_claude_md", "--keep-web-search": "keep_web_search", "--no-hooks": "no_hooks", "--autocompact": "autocompact",
+    "--keep-claude-md": "keep_claude_md", "--keep-web-search": "keep_web_search", "--no-hooks": "no_hooks", VALUED_OPTION: "autocompact",
 }
 AUTOCOMPACT_THOUSANDS = (100, 1000)
 TOKENS_PER_THOUSAND = 1000
