@@ -210,3 +210,18 @@ def test_an_old_layout_stops_every_verb_with_the_commands_to_run(login, tmp_path
         f"unharness: old layout in {tmp_path.resolve()}; run these there:\n"
         "mkdir -p .manifestos\nmv .manifestos.yaml .manifestos/config.yaml\n"
     )
+
+
+RECORDED_FILE_HASH = "85372cb19aba2fd939ffd3c2182daba41788c9630a7ea78f48ebcc290eec3863"
+RECORDED_STACK = f"<stack>\nrules {RECORDED_FILE_HASH}\n</stack>"
+
+
+def test_prompt_accepts_session_files_recorded_with_a_literal_file_hash_without_a_recompile(login, tmp_path):
+    write(tmp_path / "notes/rules.md", "Rules.\n")
+    write(tmp_path / ".manifestos/config.yaml", "you:\n  - source: file notes/rules.md\n")
+    write(tmp_path / ".manifestos/interplay.md", f"{RECORDED_STACK}\n\n<interplay>\nAgree.\n</interplay>\n")
+    write(tmp_path / ".manifestos/commitments.md", f"{RECORDED_STACK}\n\n<commitments>\nI will.\n</commitments>\n")
+
+    run = unharness(login, "prompt", cwd=tmp_path)
+
+    assert run.returncode == 0, run.stderr
