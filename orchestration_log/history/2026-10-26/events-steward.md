@@ -32,3 +32,6 @@
 2026-10-26T19:35+0200 | agent:u3-hooks | receipt | U3 follow-ups: d52df38 (test only), 9968e96 (no ":;"); checked: hook suite OK (29), package 365
 2026-10-26T19:35+0200 | self | decision | core fast-forwarded to 9968e96; hooks worktree removed; core carries merge commits of session/long-run from U1 and U3, to be linearized by a rebase before main. Alternative: keep the merges
 2026-10-26T19:36+0200 | self | delegation | worktree docs (feat/4.0.0-docs) from core 9968e96; u5-docs (opus, background) launched from prompts/u5-docs.md
+2026-10-26T19:36+0200 | self | delegation | wake 6226d38c set for 20:07 covering u4-doctor and u5-docs
+2026-10-26T19:37+0200 | agent:u4-doctor | receipt | U4 done, report u4-report.md; two edits outside scope (fix_command on session_file_problem, shared no_subagent_key_message)
+2026-10-26T19:37+0200 | self | decision | U4 rebased onto core and fast-forwarded (core c03d2dd): 385 package tests, hook suite OK; doctor worktree removed
