@@ -41,3 +41,5 @@
 2026-10-26T20:12+0200 | agent:u5-docs | failure | u5-docs and d1-spec stopped at the session limit (resets 22:20); u5 left 4732b20, 151187e, 39e0868, clean tree
 2026-10-26T20:12+0200 | owner | decision | owner switched login (/login) and typed "continue"
 2026-10-26T20:12+0200 | self | delegation | u5-docs and d1-spec resumed by message; d1-quality still waits for d1-spec.md
+2026-10-26T20:14+0200 | agent:d1-spec | receipt | d1-spec.md: Verdict FAIL, 5 minor (1 version unraised; 2 bare trailing --settings passes through; 3 no pinned pre-recorded stack block test; 4 no --agent with --digests/--stack-digests test; 5 colon trim unrecorded)
+2026-10-26T20:14+0200 | self | decision | 1 rides the release commit; 5 recorded as amendment to spec decision 13; 2-4 batched with the quality findings into one fix unit; d1-quality told to start. Alternative: fix 2-4 before the quality review
