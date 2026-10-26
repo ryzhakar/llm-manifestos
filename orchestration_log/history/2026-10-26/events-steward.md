@@ -54,3 +54,5 @@
 2026-10-26T20:19+0200 | self | delegation | d1-quality continued on the PASS verdict; report d2-quality.md
 2026-10-26T20:20+0200 | agent:d2-docs | receipt | d2-docs.md: Verdict FAIL, 2 partial (manifesto-oath names no digests path; compile-digest says "beside the config")
 2026-10-26T20:20+0200 | self | decision | finding 1 closed by a recorded amendment to the Docs sentence (rename where old paths were named); finding 2 to f2-fix (haiku) in worktree fix2. Alternative for 1: add a digests line to manifesto-oath
+2026-10-26T20:20+0200 | agent:f2-fix | receipt | f351b5c, one line; validate passed
+2026-10-26T20:20+0200 | self | delegation | core fast-forwarded to f351b5c; d2-docs continued for a re-review (verdict d3-docs.md)
