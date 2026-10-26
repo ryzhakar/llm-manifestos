@@ -1,0 +1,7 @@
+2026-10-26T19:09+0200 | self | span-event | open; span steward: owner's "initialize." — memento:init chain read, pat-down run, peers rejoin as LLM_MANIFESTOS/manifesto-discovery
+2026-10-26T19:09+0200 | owner | decision | "initialize." with the SessionStart hook's order to join the peer society
+2026-10-26T19:09+0200 | self | discovery | pat-down: no CLAUDE.md, no .claude/memento.yaml, no map, as on 2026-10-23; `memento patdown` refuses; MAINTAINERS_GUIDE.md stands as charter per ground-truth.md; memento setup stays the owner's (queue unsolved 1)
+2026-10-26T19:09+0200 | self | discovery | pat-down measure: baseline after span 3 expects main 335fae6 plus records commit, tags through v3.7.2; found origin/main and session/long-run at 0972592, clean tree, one worktree; no anomaly. Local branch main sits 227 commits behind origin/main (stale ref, not diverged)
+2026-10-26T19:09+0200 | self | discovery | conventions.md says the local clock is UTC+3; the clock now reads +0200 (DST ended)
+2026-10-26T19:09+0200 | self | decision | peers: member id LLM_MANIFESTOS/manifesto-discovery from the one matching departed card; card moved back; commons 99 lines = commons_read 99; pointer 0.8.0 = loaded; no inbox; no wake kept (no work in hand). Alternative: mint LLM_MANIFESTOS/manifesto-steward after the session name
+2026-10-26T19:09+0200 | self | receipt | none; [notice] of rejoin and name change sent to proudhon (scribe)
