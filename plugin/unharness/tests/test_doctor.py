@@ -360,6 +360,101 @@ def test_a_failing_you_element_does_not_hide_the_subagents_lines(host, project, 
     assert finding(lines, "stack subagents.implementer").startswith("WARN stack subagents.implementer: ")
 
 
+def test_agent_match_names_the_key_a_type_matches_after_the_main_session_files(host, project, capsys):
+    write(project, AGENT_CONFIG)
+    write_session_files(project, host / "login", FULL_PAIR + MINIFIED_PAIR)
+
+    _, lines = doctor(capsys, "--config", str(project), "--agent", "dev-cycle:implementer")
+
+    names = [line.split(": ")[0] for line in lines]
+    assert names[names.index("OK .manifestos/commitments.min.md") + 1] == "OK agent match"
+    assert finding(lines, "agent match") == "OK agent match: dev-cycle:implementer -> implementer"
+
+
+def test_no_agent_match_line_appears_without_the_agent_flag(host, project, capsys):
+    write(project, AGENT_CONFIG)
+
+    _, lines = doctor(capsys, "--config", str(project))
+
+    assert not [line for line in lines if " agent match:" in line]
+
+
+def test_a_type_that_falls_through_to_other_warns_with_the_default_stack(host, project, capsys):
+    write(project, AGENT_CONFIG)
+
+    _, lines = doctor(capsys, "--config", str(project), "--agent", "reviewer")
+
+    assert finding(lines, "agent match") == "WARN agent match: reviewer -> other, the default stack"
+
+
+def test_a_type_that_is_other_itself_matches_without_a_warning(host, project, capsys):
+    write(project, AGENT_CONFIG)
+
+    _, lines = doctor(capsys, "--config", str(project), "--agent", "other")
+
+    assert finding(lines, "agent match") == "OK agent match: other -> other"
+
+
+def test_a_type_that_matches_no_key_fails_with_the_keys_in_config_order(host, project, capsys):
+    write(project, CONFIG + "subagents:\n  implementer:\n    - name: dry\n  planner:\n    - name: dry\n")
+
+    status, lines = doctor(capsys, "--config", str(project), "--agent", "reviewer")
+
+    assert finding(lines, "agent match") == "FAIL agent match: reviewer matches no subagents key and the config has no other:; keys: implementer, planner"
+    assert status == 1
+
+
+def test_a_type_that_matches_no_key_in_a_config_without_subagents_fails_with_keys_none(host, project, capsys):
+    _, lines = doctor(capsys, "--config", str(project), "--agent", "reviewer")
+
+    assert finding(lines, "agent match") == "FAIL agent match: reviewer matches no subagents key and the config has no other:; keys: none"
+
+
+def test_a_problem_in_the_matched_keys_files_fails_while_the_other_keys_only_warn(host, project, capsys):
+    write(project, AGENT_CONFIG)
+
+    _, lines = doctor(capsys, "--config", str(project), "--agent", "implementer")
+
+    assert finding(lines, "stack subagents.implementer").startswith("FAIL stack subagents.implementer: ")
+    assert finding(lines, "stack subagents.other").startswith("WARN stack subagents.other: ")
+
+
+def test_a_problem_in_the_matched_keys_elements_fails(host, project, capsys):
+    write(project, CONFIG + "subagents:\n  implementer:\n    - name: kiss\n")
+
+    _, lines = doctor(capsys, "--config", str(project), "--agent", "implementer")
+
+    assert finding(lines, "stack subagents.implementer").startswith("FAIL stack subagents.implementer: element kiss did not resolve")
+
+
+def test_a_fall_through_type_fails_the_other_keys_problems(host, project, capsys):
+    write(project, AGENT_CONFIG)
+
+    _, lines = doctor(capsys, "--config", str(project), "--agent", "reviewer")
+
+    assert finding(lines, "stack subagents.other").startswith("FAIL stack subagents.other: ")
+    assert finding(lines, "stack subagents.implementer").startswith("WARN stack subagents.implementer: ")
+
+
+def test_the_matched_keys_minified_pair_fails_only_under_the_minified_flag(host, project, capsys):
+    write(project, AGENT_CONFIG)
+    write_agent_files(project, host / "login", "implementer", count=2)
+
+    _, plain = doctor(capsys, "--config", str(project), "--agent", "implementer")
+    _, minified = doctor(capsys, "--config", str(project), "--agent", "implementer", "--minified")
+
+    assert finding(plain, "stack subagents.implementer").startswith("WARN stack subagents.implementer: ")
+    assert finding(minified, "stack subagents.implementer").startswith("FAIL stack subagents.implementer: ")
+
+
+def test_the_you_stack_only_warns_when_agent_names_another_stack(host, project, capsys):
+    write(project, CONFIG + "  - name: kiss\nsubagents:\n  implementer:\n    - name: dry\n")
+
+    _, lines = doctor(capsys, "--config", str(project), "--agent", "implementer")
+
+    assert finding(lines, "stack you").startswith("WARN stack you: element kiss did not resolve")
+
+
 needs_digests = pytest.mark.skipif(importlib.util.find_spec("unharness.digests") is None, reason="C1 has not landed unharness.digests")
 DIGESTED_CONFIG = "you:\n  - name: dry\n    purpose: one home\n  - name: kiss\n  - name: write-well\n    source: skill agent-conduct:write-well\n"
 LONG_BODY = " ".join(f"word{number}" for number in range(40))

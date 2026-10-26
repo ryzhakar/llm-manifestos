@@ -26,8 +26,11 @@ from unharness.config import (
     Config,
     Element,
     UnharnessError,
+    falls_through_to_default,
     load,
+    no_subagent_key_message,
     old_layout,
+    subagent_key,
 )
 from unharness.digests import (
     Digest,
@@ -91,6 +94,7 @@ class Modes:
     stack_digests: bool
     overlap: bool
     minified: bool
+    agent: str | None
 
 
 def doctor(
@@ -115,6 +119,7 @@ def doctor(
     except UnharnessError as error:
         return [*layout, Finding(Status.FAIL, "config", str(error)), *host]
     plugin = manifesto_plugin_dir(config.registry, login)
+    matched = None if modes.agent is None else subagent_key(modes.agent, list(config.subagents))
     outcomes = [_resolve_element(element, config, login) for element in config.you]
     documents = [document for _, document in outcomes]
     stack = None if not documents or None in documents else documents
@@ -134,10 +139,11 @@ def doctor(
         *layout,
         Finding(Status.OK, "config", str(config_path.resolve())),
         *[finding for finding, _ in outcomes],
-        _stack_finding("stack you", _elements_problem(outcomes, EMPTY_STACK_MESSAGE), len(outcomes)),
+        _stack_finding("stack you", _elements_problem(outcomes, EMPTY_STACK_MESSAGE), len(outcomes), loaded=modes.agent is None),
         *skills,
         *on_stack,
-        *_subagent_findings(config, login, modes),
+        *_agent_match_findings(modes.agent, list(config.subagents)),
+        *_subagent_findings(config, login, modes, matched),
         _preamble_finding(config.directory),
         *host,
         *size,
@@ -174,32 +180,45 @@ def _elements_problem(outcomes: list[tuple[Finding, Document | None]], empty_mes
     return next((finding.detail for finding, document in outcomes if document is None), None)
 
 
-def _stack_finding(name: str, problem: str | None, count: int) -> Finding:
-    """Report a stack that resolved its elements, or fail with the problem."""
+def _stack_finding(name: str, problem: str | None, count: int, loaded: bool) -> Finding:
+    """Report a stack that resolved its elements, or the problem, a FAIL when the prompt would load the stack."""
     if problem:
-        return Finding(Status.FAIL, name, problem)
+        return Finding(Status.FAIL if loaded else Status.WARN, name, problem)
     return Finding(Status.OK, name, f"{count} elements resolved")
 
 
-def _subagent_findings(config: Config, login: Path, modes: Modes) -> list[Finding]:
-    """Report each subagents key's stack in config order."""
-    return [_subagent_finding(key, elements, config, login, modes) for key, elements in config.subagents.items()]
+def _agent_match_findings(agent_type: str | None, keys: list[str]) -> list[Finding]:
+    """Report the subagents key the agent type matches, none without an agent type."""
+    if agent_type is None:
+        return []
+    name = "agent match"
+    key = subagent_key(agent_type, keys)
+    if key is None:
+        return [Finding(Status.FAIL, name, no_subagent_key_message(agent_type, keys))]
+    if falls_through_to_default(agent_type, keys):
+        return [Finding(Status.WARN, name, f"{agent_type} -> {key}, the default stack")]
+    return [Finding(Status.OK, name, f"{agent_type} -> {key}")]
 
 
-def _subagent_finding(key: str, elements: list[Element], config: Config, login: Path, modes: Modes) -> Finding:
+def _subagent_findings(config: Config, login: Path, modes: Modes, matched: str | None) -> list[Finding]:
+    """Report each subagents key's stack in config order; the matched key's problems fail where the flags load them."""
+    return [_subagent_finding(key, elements, config, login, modes, key == matched) for key, elements in config.subagents.items()]
+
+
+def _subagent_finding(key: str, elements: list[Element], config: Config, login: Path, modes: Modes, is_matched: bool) -> Finding:
     """Report the first problem in the key's elements, its empty list, and its four files, else that all is current."""
     name = f"stack subagents.{key}"
     outcomes = [_resolve_element(element, config, login) for element in elements]
     problem = _elements_problem(outcomes, f"subagents.{key} is empty")
     if problem:
-        return Finding(Status.WARN, name, problem)
+        return Finding(Status.FAIL if is_matched else Status.WARN, name, problem)
     documents = [document for _, document in outcomes]
     for pair in (FULL_FILES, MINIFIED_FILES):
         files = agent_files(pair, key)
         for path in files.paths:
             problem = session_file_problem(path, read_if_present(config.directory / path), documents, files.fix_command)
             if problem:
-                return Finding(Status.WARN, name, problem)
+                return Finding(Status.FAIL if is_matched and pair == _loaded_pair(modes) else Status.WARN, name, problem)
     return Finding(Status.OK, name, f"{len(documents)} elements resolved; session files current")
 
 
@@ -261,10 +280,14 @@ def _prompt_size_finding(elements: list[Element], documents: list[Document], dir
 def _session_findings(documents: list[Document], directory: Path, modes: Modes) -> list[Finding]:
     """Check the four session files against the stack; a problem fails for the pair the flags load, else warns."""
     return [
-        _session_finding(name, directory, documents, loaded=pair == (MINIFIED_FILES if modes.minified else FULL_FILES))
+        _session_finding(name, directory, documents, loaded=pair == _loaded_pair(modes))
         for pair in (FULL_FILES, MINIFIED_FILES)
         for name in (pair.interplay, pair.commitments)
     ]
+
+
+def _loaded_pair(modes: Modes) -> SessionFiles:
+    return MINIFIED_FILES if modes.minified else FULL_FILES
 
 
 def _preamble_finding(directory: Path) -> Finding:

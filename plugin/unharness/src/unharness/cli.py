@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from unharness.compile import FULL_FILES, MINIFIED_FILES, SessionFiles, agent_files, compile_prompt, session_file_diff, stack_view
-from unharness.config import CONFIG_PATH, EMPTY_STACK_MESSAGE, Config, Element, UnharnessError, fail, falls_through_to_default, load, subagent_key
+from unharness.config import CONFIG_PATH, EMPTY_STACK_MESSAGE, Config, Element, UnharnessError, fail, falls_through_to_default, load, no_subagent_key_message, subagent_key
 from unharness.digests import DIGESTS_FLAG, OVERLAP_FLAG, STACK_DIGESTS_FLAG, constitution_blocks, digest_mode, stamp_digest
 from unharness.doctor import Modes, claude_version, doctor, has_failed
 from unharness.launch import Options, cache_home, execute_launcher, launch, reopen_terminal, version_output, terminal_device
@@ -70,6 +70,7 @@ def _run(argv: list[str]) -> int:
     doctor_parser = verbs.add_parser(DOCTOR_VERB)
     doctor_parser.add_argument("--config", type=Path, default=CONFIG_PATH)
     doctor_parser.add_argument(CLAUDE_VERSION_FLAG)
+    doctor_parser.add_argument(AGENT_FLAG)
     for flag in MODE_FLAGS:
         doctor_parser.add_argument(flag, action="store_true")
     arguments = parser.parse_args(argv)
@@ -112,7 +113,7 @@ def _stamp(arguments: argparse.Namespace, login: Path) -> str:
 
 
 def _doctor(arguments: argparse.Namespace) -> int:
-    modes = Modes(arguments.digests, arguments.stack_digests, arguments.overlap, arguments.minified)
+    modes = Modes(arguments.digests, arguments.stack_digests, arguments.overlap, arguments.minified, arguments.agent)
     findings = doctor(arguments.config, modes, login_dir(os.environ, Path.home()), os.environ, claude_version, shipped_switches(), arguments.claude_version)
     print("\n".join(finding.line for finding in findings))
     return 1 if has_failed(findings) else 0
@@ -163,7 +164,7 @@ def _elements_to_bind(config: Config, agent_type: str | None) -> tuple[list[Elem
     keys = list(config.subagents)
     key = subagent_key(agent_type, keys)
     if key is None:
-        raise UnharnessError(f"{agent_type} matches no subagents key and the config has no other:; keys: {', '.join(keys) or 'none'}")
+        raise UnharnessError(no_subagent_key_message(agent_type, keys))
     if falls_through_to_default(agent_type, keys):
         print(f"unharness: {agent_type} matches no subagents key; using other:, the default stack", file=sys.stderr)
     if not config.subagents[key]:
