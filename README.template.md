@@ -45,7 +45,7 @@ This README is generated from manifesto frontmatter. **For complete maintainer w
 
 The plugin carries `manifestos/` and `digests/` in its own folder; nothing is cloned at session start.
 
-It also carries unharness, which compiles the manifestos a project lists in `.manifestos.yaml` into a session's system prompt, in full or, under `--digests`, as the shorter digests in `digests/` and `.claude/digests/`; it runs through uv. See the Unharness section of [plugin/README.md](plugin/README.md).
+It also carries unharness, which compiles the manifestos a project lists in `.manifestos/config.yaml` into a session's system prompt, and with `--agent` into a subagent's, in full or, under `--digests`, as the shorter digests in `digests/` and `.manifestos/digests/`; `unharness stack --agent` prints a subagent's stack, and `unharness stack --diff` shows why a compiled file went stale. It runs through uv. See the Unharness section of [plugin/README.md](plugin/README.md).
 
 **Quick workflow:**
 

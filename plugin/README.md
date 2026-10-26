@@ -7,7 +7,7 @@ Create concentrated manifesto declarations and bind Claude behavior to user-prov
 
 ### [compile-commitments](skills/compile-commitments/SKILL.md)
 
-Write the interplay file and the commitments file that a session's system prompt carries, and their min pair, from the stack the session binds to. Use it as `/compile-commitments`, or after any change to the stack.
+Write the interplay file and the commitments file that a session's system prompt carries, and their min pair, from the stack the session binds to, or from one subagents key's stack. Use it as `/compile-commitments`, or as `/compile-commitments <key>` for a key under `subagents:`, or after any change to the stack.
 
 
 ---
@@ -60,12 +60,16 @@ assistant: "I'll launch the maximalist-reviewer agent with the Strunk source and
 
 The system prompt carries the stack, its interplay, and its commitments; since the prompt is not part of the conversation, compaction cannot erase the binding, and one captured compaction left the prompt unchanged. Launch switches off the instructions Claude Code adds around it, and `unharness` compiles the prompt and launches Claude Code with it.
 
-Beside `.manifestos.yaml`, whose schema is in [SCHEMA.md](SCHEMA.md), a project keeps these files and folders:
+A project keeps every file of ours in `.manifestos/`, and the project folder is the folder that holds it. `.manifestos/` holds:
 
-- `.manifestos.interplay.md` and `.manifestos.commitments.md`, written by `/compile-commitments`, each opening with a `<stack>` block that lists every element with its sha256.
-- `.manifestos.interplay.min.md` and `.manifestos.commitments.min.md`, the min pair, which `/compile-commitments` writes in the same run, each opening with the same `<stack>` block and holding in its body, the text after that block, at most a third of the words of its full counterpart's body. `--minified` loads them in place of the full pair.
-- `.manifestos.preamble.md`, optional, which replaces the preamble that tells the model what each text the application adds is, and how to weigh it.
-- `.claude/digests/`, optional, which holds the digests `/compile-digest` writes and their `index.json`.
+- `config.yaml`, which lists the stacks and whose schema is in [SCHEMA.md](SCHEMA.md); `--config PATH` names another config file, and its folder's parent becomes the project folder.
+- `interplay.md` and `commitments.md`, written by `/compile-commitments`, each opening with a `<stack>` block that lists every element with its sha256.
+- `interplay.min.md` and `commitments.min.md`, the min pair, which `/compile-commitments` writes in the same run, each opening with the same `<stack>` block and holding in its body, the text after that block, at most a third of the words of its full counterpart's body. `--minified` loads them in place of the full pair.
+- `agents/<key>/`, one folder per `subagents:` key, holding the same four files for that key's stack, written by `/compile-commitments <key>`.
+- `preamble.md`, optional, which replaces the preamble that tells the model what each text the application adds is, and how to weigh it.
+- `digests/`, optional, which holds the digests `/compile-digest` writes and their `index.json`.
+
+On a project still in the old layout, with `.manifestos.yaml` and the files beside it, `unharness` stops with `old layout in <project folder>; run these there:` and the `mkdir` and `mv` lines that move each file, and each hook binds nothing and points to `unharness doctor`; no reader falls back to an old path.
 
 ```
 /compile-commitments
@@ -74,8 +78,8 @@ uvx unharness prompt | uvx unharness launch -- claude
 
 The launcher's input is reopened on the terminal, so the session reads the keyboard after the pipe. Any launcher goes after `--`; a name that is not a program on PATH, such as the zsh function `claude@meta`, runs through `$SHELL -ic`. With nothing after `--`, `launch` prints the command it would run and runs nothing.
 
-- `unharness prompt [--config PATH] [--digests] [--stack-digests] [--overlap] [--minified]` prints the compiled prompt; it stops when the interplay or commitments file is missing or its `<stack>` block differs from the current stack. Under `--minified` the same holds for the min pair.
-- `unharness stack [--config PATH] [SLUG ...]` prints the `<stack>` block and the constitution, exactly what a session binds to. Given slugs, it prints those manifestos alone. It takes no mode flag, since a session always binds to full texts.
+- `unharness prompt [--config PATH] [--agent TYPE] [--digests] [--stack-digests] [--overlap] [--minified]` prints the compiled prompt; it stops when the interplay or commitments file is missing or its `<stack>` block differs from the current stack. Under `--minified` the same holds for the min pair. `--agent TYPE` compiles the stack of the `subagents:` key that TYPE matches, with the session files in `.manifestos/agents/<key>/`, and takes every mode flag.
+- `unharness stack [--config PATH] [--agent TYPE] [--diff] [SLUG ...]` prints the `<stack>` block and the constitution, exactly what a session binds to. Given slugs, it prints those manifestos alone. It takes no mode flag, since a session always binds to full texts. `--agent TYPE` prints the matched key's stack instead of the main one. `--diff` prints, for each of the four session files that is stale, the zero-context unified diff of its recorded `<stack>` lines against the current ones, `<path>: missing` for a missing file, and `<path>: no <stack> block` for a file without one; it exits 0 when every file is current and 1 otherwise. `--agent` and `--diff` each refuse slugs.
 - `unharness stamp DIGEST [--config PATH]` writes the digest's entry into its `index.json`.
 - `unharness doctor [--config PATH] [--digests] [--stack-digests] [--overlap] [--minified] [--claude-version X.Y.Z]` prints one line per check and exits 1 on any FAIL.
 - `unharness switches` prints the strip table below, generated from the switch registry.
@@ -84,9 +88,19 @@ The launcher's input is reopened on the terminal, so the session reads the keybo
 If ARGS hold one `--settings VALUE` or `--settings=VALUE`, `launch` merges it with its own: VALUE is JSON text when its first non-space character is `{`, else a file path relative to the working folder. The result passes as the one `--settings`, the owner's keys first in their order, then each strip key the owner did not set. The merge is shallow, so a key the owner sets replaces the strip's whole value, and `unharness: your --settings sets <key>; the strip's value is left out` goes on stderr for each. Two `--settings` stop with `pass --settings once after --`. A launcher that adds `--settings` inside itself stays unseen.
 
 `/compile-commitments` reads `unharness stack`, reduces each element to its axioms, and writes the interplay and commitments files and their min pair.
-Run it once after each change to the stack; `unharness prompt` stops until the full pair matches, and under `--minified` until the min pair matches.
+Run it once after each change to the stack; `unharness prompt` stops until the full pair matches, and under `--minified` until the min pair matches. `unharness stack --diff` shows which elements changed.
 
-**Digests.** A digest is the short text that stands in for a manifesto. Under `--digests` each manifesto element enters as its single digest; under `--stack-digests` it may enter inside a stack digest instead. Skills and files enter in full. A single digest is `<slug>.md`; a stack digest is `<a+b>.md`, named by its sorted slugs joined with `+`. unharness reads singles from `.claude/digests/` beside the config, then from the plugin's `digests/`, and stack digests from `.claude/digests/`, then from the plugin's `digests/stacks/`. The local file wins for its stem, even when its entry is stale, so a current plugin copy does not rescue it. The cover rule: unharness chooses, from the digests whose manifestos all belong to the stack, the set that covers every manifesto in the fewest characters, and a tie goes to fewer files, then to the smaller sorted list of stems. Chosen stack digests share no manifesto unless `--overlap` is set. A digest loads only when its index entry holds the current hash of each manifesto it covers; otherwise `prompt` stops with a message that names the fix.
+`--agent TYPE` matches a key under `subagents:` by this cascade, the first match winning: a key equal to TYPE; when TYPE holds `:`, a key equal to the part after its last `:`; the first key in config order, `other` excepted, that TYPE ends with; and `other:`, the default stack. A fall to `other:` prints `unharness: <type> matches no subagents key; using other:, the default stack` on stderr; no match, with no `other:`, stops and names the keys. The subagent-start hook matches by the same cascade.
+
+```
+/compile-commitments implementer
+unharness prompt --agent dev-cycle:implementer
+unharness stack --diff --agent implementer
+```
+
+`/compile-commitments <key>` takes a key exactly as written, never a type, since the cascade could map a type to another key's folder.
+
+**Digests.** A digest is the short text that stands in for a manifesto. Under `--digests` each manifesto element enters as its single digest; under `--stack-digests` it may enter inside a stack digest instead. Skills and files enter in full. A single digest is `<slug>.md`; a stack digest is `<a+b>.md`, named by its sorted slugs joined with `+`. unharness reads singles from `.manifestos/digests/`, then from the plugin's `digests/`, and stack digests from `.manifestos/digests/`, then from the plugin's `digests/stacks/`. The local file wins for its stem, even when its entry is stale, so a current plugin copy does not rescue it. The cover rule: unharness chooses, from the digests whose manifestos all belong to the stack, the set that covers every manifesto in the fewest characters, and a tie goes to fewer files, then to the smaller sorted list of stems. Chosen stack digests share no manifesto unless `--overlap` is set. A digest loads only when its index entry holds the current hash of each manifesto it covers; otherwise `prompt` stops with a message that names the fix.
 
 - `--digests`: each manifesto enters as its single digest.
 - `--stack-digests`: implies `--digests` and adds stack digests as candidates.
@@ -96,11 +110,11 @@ Run it once after each change to the stack; `unharness prompt` stops until the f
 `prompt` and `doctor` accept the four flags. `/compile-digest <slug>...` writes a local digest and stamps it; run `unharness stamp` on a digest written by hand.
 
 ```
-unharness stamp .claude/digests/dry.md
-stamped dry in .claude/digests/index.json
+unharness stamp .manifestos/digests/dry.md
+stamped dry in .manifestos/digests/index.json
 ```
 
-Each place keeps one `index.json`, in `.claude/digests/` and in the plugin's `digests/`, and that index covers every digest of that place, the plugin's `stacks/` included. It maps each stem to the sha256 of every manifesto the digest covers:
+Each place keeps one `index.json`, in `.manifestos/digests/` and in the plugin's `digests/`, and that index covers every digest of that place, the plugin's `stacks/` included. It maps each stem to the sha256 of every manifesto the digest covers:
 
 ```json
 {
