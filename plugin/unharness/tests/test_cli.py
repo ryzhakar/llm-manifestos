@@ -116,7 +116,7 @@ def test_the_cached_prompt_is_utf_8_whatever_the_locale(tmp_path):
         "from pathlib import Path\n"
         "from unharness.launch import Options, launch\n"
         "from unharness.switches import shipped_switches\n"
-        f"launch('Caf\\u00e9\\n', Options(False, False, False, []), shipped_switches(), {{}}, Path({str(tmp_path)!r}), '/dev/tty', None, None, lambda *_: '2.1.309')\n"
+        f"launch('Caf\\u00e9\\n', Options(False, False, False, []), shipped_switches(), {{}}, Path({str(tmp_path)!r}), '/dev/tty', None, None, lambda *_: '2.1.309', lambda *_: '')\n"
     )
 
     run = subprocess.run([sys.executable, "-c", script], capture_output=True, env=C_LOCALE)

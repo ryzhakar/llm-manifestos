@@ -56,7 +56,7 @@ def cached_prompt(cache_home: Path, prompt: str = PROMPT) -> Path:
 
 
 def printed_command(options: Options, cache_home: Path, capsys) -> list[str]:
-    assert launch(PROMPT, options, shipped_switches(), {}, cache_home, TERMINAL, never, never, at_tested) == 0
+    assert launch(PROMPT, options, shipped_switches(), {}, cache_home, TERMINAL, never, never, at_tested, never) == 0
     line = capsys.readouterr().out
     assert line.endswith(f" <{TERMINAL}\n") and line.count("\n") == 1
     return shlex.split(line.removesuffix(f" <{TERMINAL}\n"))
@@ -76,7 +76,7 @@ def test_without_a_launcher_it_prints_the_command_for_claude_and_runs_nothing(tm
 def test_the_prompt_is_cached_under_its_sha256_with_a_private_file_and_folder(tmp_path):
     previous_umask = os.umask(0)
     try:
-        launch(PROMPT, Options(False, False, False, []), shipped_switches(), {}, tmp_path, TERMINAL, never, never, at_tested)
+        launch(PROMPT, Options(False, False, False, []), shipped_switches(), {}, tmp_path, TERMINAL, never, never, at_tested, never)
     finally:
         os.umask(previous_umask)
 
@@ -88,7 +88,7 @@ def test_the_prompt_is_cached_under_its_sha256_with_a_private_file_and_folder(tm
 
 def test_an_empty_prompt_stops_before_anything_is_written(tmp_path):
     with pytest.raises(UnharnessError, match="^the prompt is empty$"):
-        launch(" \n", Options(False, False, False, []), shipped_switches(), {}, tmp_path, TERMINAL, never, never, at_tested)
+        launch(" \n", Options(False, False, False, []), shipped_switches(), {}, tmp_path, TERMINAL, never, never, at_tested, never)
 
     assert list(tmp_path.iterdir()) == []
 
@@ -131,7 +131,7 @@ def test_with_a_launcher_it_reopens_stdin_then_executes_the_launcher_with_the_st
         PROMPT, Options(False, False, False, ["fake", "extra"]), shipped_switches(), {"KEPT": "yes"}, tmp_path, TERMINAL,
         lambda device: calls.append(("reopen", device)),
         lambda argv, env: calls.append((argv, env)) or 7,
-        at_tested,
+        at_tested, never,
     )
 
     assert status == 7
@@ -211,7 +211,7 @@ def test_the_cache_is_dot_cache_in_home_unless_xdg_cache_home_is_set_and_not_emp
     (Options(False, False, True, []), ',"disableAllHooks":true'),
 ])
 def test_the_printed_command_equals_the_one_3_6_1_printed(options, hooks, tmp_path, capsys):
-    assert launch(PROMPT, options, shipped_switches(), {}, tmp_path, TERMINAL, never, never, at_tested) == 0
+    assert launch(PROMPT, options, shipped_switches(), {}, tmp_path, TERMINAL, never, never, at_tested, never) == 0
 
     expected = COMMAND_OF_3_6_1.format(prompt_file=cached_prompt(tmp_path), hooks=hooks, terminal=TERMINAL)
     assert capsys.readouterr().out == expected
@@ -226,7 +226,7 @@ def entry(**overrides) -> dict:
 
 
 def printed_command_of(entries: list[dict], options: Options, tmp_path, capsys) -> list[str]:
-    launch(PROMPT, options, parse_switches(json.dumps(entries)), {}, tmp_path, TERMINAL, never, never, at_tested)
+    launch(PROMPT, options, parse_switches(json.dumps(entries)), {}, tmp_path, TERMINAL, never, never, at_tested, never)
     return shlex.split(capsys.readouterr().out.removesuffix(f" <{TERMINAL}\n"))
 
 
@@ -293,7 +293,7 @@ def passed_and_noted(version_of, tmp_path, capsys, options=Options(False, False,
     """Return the variables launch passes from REGISTRY_ENTRIES, and what it wrote on stderr."""
     environments = []
     launch(PROMPT, options, parse_switches(json.dumps(REGISTRY_ENTRIES)), {}, tmp_path, TERMINAL, lambda device: None,
-           lambda argv, env: environments.append(env) or 0, version_of)
+           lambda argv, env: environments.append(env) or 0, version_of, never)
     passed = [f"{name}={value}" for name, value in environments[0].items() if name != "UNHARNESS"]
     return passed, capsys.readouterr().err
 
@@ -303,7 +303,7 @@ def test_the_version_is_asked_of_the_launcher_launch_runs(tmp_path):
 
     launch(PROMPT, Options(False, False, False, ["claude@meta", "--model", "opus"]), shipped_switches(), {"KEPT": "yes"},
            tmp_path, TERMINAL, lambda device: None, lambda argv, env: 0,
-           lambda argv, environ: asked.append((argv, environ)) or at_tested())
+           lambda argv, environ: asked.append((argv, environ)) or at_tested(), never)
 
     assert asked == [(["claude@meta", "--model", "opus", "--version"], {"KEPT": "yes"})]
 
@@ -312,7 +312,7 @@ def test_without_a_launcher_the_version_is_asked_of_claude(tmp_path):
     asked = []
 
     launch(PROMPT, Options(False, False, False, []), shipped_switches(), {}, tmp_path, TERMINAL, never, never,
-           lambda argv, environ: asked.append(argv) or at_tested())
+           lambda argv, environ: asked.append(argv) or at_tested(), never)
 
     assert asked == [["claude", "--version"]]
 
@@ -333,7 +333,7 @@ def test_a_launcher_that_prints_no_version_gets_the_newest_registry_version_and_
 
 def test_without_a_launcher_the_note_names_claude(tmp_path, capsys):
     launch(PROMPT, Options(False, False, False, []), parse_switches(json.dumps(REGISTRY_ENTRIES)), {}, tmp_path, TERMINAL,
-           never, never, reported(""))
+           never, never, reported(""), never)
     noted = capsys.readouterr().err
 
     assert noted == NO_VERSION_NOTE.format(launcher="claude", newest="2.1.320")
@@ -348,7 +348,7 @@ def test_claude_version_replaces_the_run_and_the_note(tmp_path, capsys):
 @pytest.mark.parametrize("value", ["2.1", "v2.1.309", "2.1.309 ", "2.1.309-beta", ""])
 def test_a_claude_version_that_is_not_x_y_z_stops_launch_before_anything_is_written(tmp_path, value):
     with pytest.raises(UnharnessError, match=f"^--claude-version takes X.Y.Z, got {value}$"):
-        launch(PROMPT, Options(False, False, False, [], value), shipped_switches(), {}, tmp_path, TERMINAL, never, never, never)
+        launch(PROMPT, Options(False, False, False, [], value), shipped_switches(), {}, tmp_path, TERMINAL, never, never, never, never)
 
     assert list(tmp_path.iterdir()) == []
 
@@ -483,7 +483,7 @@ def test_the_owner_settings_pass_alone_when_no_settings_entry_passes(tmp_path, c
     commands = []
     launch(
         PROMPT, Options(False, False, False, ["fake", "--settings", '{"model":"opus"}']), parse_switches(json.dumps([entry()])), {},
-        tmp_path, TERMINAL, lambda device: None, lambda argv, env: commands.append(argv) or 0, at_tested,
+        tmp_path, TERMINAL, lambda device: None, lambda argv, env: commands.append(argv) or 0, at_tested, never,
     )
 
     assert commands[0] == ["fake", "--system-prompt-file", str(cached_prompt(tmp_path)), "--settings", '{"model":"opus"}']

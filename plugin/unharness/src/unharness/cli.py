@@ -9,7 +9,7 @@ from unharness.compile import FULL_FILES, MINIFIED_FILES, SessionFiles, agent_fi
 from unharness.config import CONFIG_PATH, EMPTY_STACK_MESSAGE, Config, Element, UnharnessError, fail, falls_through_to_default, load, no_subagent_key_message, subagent_key
 from unharness.digests import DIGESTS_FLAG, OVERLAP_FLAG, STACK_DIGESTS_FLAG, constitution_blocks, digest_mode, stamp_digest
 from unharness.doctor import Modes, claude_version, doctor, has_failed
-from unharness.launch import Options, cache_home, execute_launcher, launch, reopen_terminal, version_output, terminal_device
+from unharness.launch import Options, cache_home, execute_launcher, launch, read_text_file, reopen_terminal, version_output, terminal_device
 from unharness.resolve import login_dir, manifesto_elements, manifesto_plugin_dir, resolve_stack
 from unharness.session import load_preamble, read_if_present
 from unharness.switches import shipped_switches, strip_table
@@ -104,7 +104,7 @@ def _launch(arguments: argparse.Namespace, launcher: list[str]) -> int:
         raise UnharnessError("no prompt: pass PROMPT or pipe unharness prompt")
     prompt = arguments.prompt if arguments.prompt is not None else sys.stdin.read()
     options = Options(arguments.keep_claude_md, arguments.keep_web_search, arguments.no_hooks, launcher, arguments.claude_version)
-    return launch(prompt, options, shipped_switches(), os.environ, cache_home(os.environ, Path.home()), terminal_device(), reopen_terminal, execute_launcher, version_output)
+    return launch(prompt, options, shipped_switches(), os.environ, cache_home(os.environ, Path.home()), terminal_device(), reopen_terminal, execute_launcher, version_output, read_text_file)
 
 
 def _stamp(arguments: argparse.Namespace, login: Path) -> str:

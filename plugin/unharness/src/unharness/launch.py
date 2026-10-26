@@ -57,7 +57,7 @@ def launch(
     reopen_stdin: Callable[[str], None],
     execute: Callable[[list[str], dict[str, str]], int],
     version_of: Callable[[list[str], Mapping[str, str]], str],
-    read_file: Callable[[str], str] = read_text_file,
+    read_file: Callable[[str], str],
 ) -> int:
     """Cache the prompt, then print the launch command, or run the launcher and return its status."""
     if not prompt.strip():
