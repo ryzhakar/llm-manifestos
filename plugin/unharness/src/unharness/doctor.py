@@ -26,11 +26,11 @@ from unharness.config import (
     Config,
     Element,
     UnharnessError,
-    falls_through_to_default,
     load,
     no_subagent_key_message,
     old_layout,
     subagent_key,
+    subagent_match,
 )
 from unharness.digests import (
     Digest,
@@ -193,12 +193,12 @@ def _agent_match_findings(agent_type: str | None, keys: list[str]) -> list[Findi
     if agent_type is None:
         return []
     name = "agent match"
-    key = subagent_key(agent_type, keys)
-    if key is None:
+    match = subagent_match(agent_type, keys)
+    if match is None:
         return [Finding(Status.FAIL, name, no_subagent_key_message(agent_type, keys))]
-    if falls_through_to_default(agent_type, keys):
-        return [Finding(Status.WARN, name, f"{agent_type} -> {key}, the default stack")]
-    return [Finding(Status.OK, name, f"{agent_type} -> {key}")]
+    if match.by_default:
+        return [Finding(Status.WARN, name, f"{agent_type} -> {match.key}, the default stack")]
+    return [Finding(Status.OK, name, f"{agent_type} -> {match.key}")]
 
 
 def _subagent_findings(config: Config, login: Path, modes: Modes, matched: str | None) -> list[Finding]:

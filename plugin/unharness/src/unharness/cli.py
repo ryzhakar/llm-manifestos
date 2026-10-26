@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from unharness.compile import FULL_FILES, MINIFIED_FILES, SessionFiles, agent_files, compile_prompt, session_file_diff, stack_view
-from unharness.config import CONFIG_PATH, EMPTY_STACK_MESSAGE, Config, Element, UnharnessError, fail, falls_through_to_default, load, no_subagent_key_message, subagent_key
+from unharness.config import CONFIG_PATH, EMPTY_STACK_MESSAGE, Config, Element, UnharnessError, fail, load, no_subagent_key_message, subagent_match
 from unharness.digests import DIGESTS_FLAG, OVERLAP_FLAG, STACK_DIGESTS_FLAG, constitution_blocks, digest_mode, stamp_digest
 from unharness.doctor import Modes, claude_version, doctor, has_failed
 from unharness.launch import Options, cache_home, execute_launcher, launch, read_text_file, reopen_terminal, version_output, terminal_device
@@ -162,10 +162,11 @@ def _elements_to_bind(config: Config, agent_type: str | None) -> tuple[list[Elem
             raise UnharnessError(EMPTY_STACK_MESSAGE)
         return config.you, None
     keys = list(config.subagents)
-    key = subagent_key(agent_type, keys)
-    if key is None:
+    match = subagent_match(agent_type, keys)
+    if match is None:
         raise UnharnessError(no_subagent_key_message(agent_type, keys))
-    if falls_through_to_default(agent_type, keys):
+    key = match.key
+    if match.by_default:
         print(f"unharness: {agent_type} matches no subagents key; using other:, the default stack", file=sys.stderr)
     if not config.subagents[key]:
         raise UnharnessError(f"subagents.{key} is empty")

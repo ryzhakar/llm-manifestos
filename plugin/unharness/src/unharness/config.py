@@ -123,6 +123,12 @@ def load(path: Path) -> Config:
     )
 
 
+@dataclass(frozen=True)
+class KeyMatch:
+    key: str
+    by_default: bool
+
+
 def old_layout(project: Path) -> list[str]:
     """Return the commands, run in the project folder, that move each old path present to its new place."""
     present = [(old, new) for old, new in OLD_LAYOUT_MOVES if (project / old).exists()]
@@ -143,11 +149,6 @@ def _require_new_layout(project: Path) -> None:
         raise UnharnessError("\n".join([f"old layout in {project}; run these there:", *commands]))
 
 
-def falls_through_to_default(agent_type: str, keys: list[str]) -> bool:
-    """Say whether the agent type matches only the default stack other, by the last step of the cascade."""
-    return subagent_key(agent_type, keys) == OTHER_KEY and agent_type.rsplit(NAMESPACE_SEPARATOR, 1)[-1] != OTHER_KEY
-
-
 def no_subagent_key_message(agent_type: str, keys: list[str]) -> str:
     """Return the message for an agent type that matches no subagents key and finds no other:."""
     return f"{agent_type} matches no subagents key and the config has no other:; keys: {', '.join(keys) or 'none'}"
@@ -160,12 +161,19 @@ def _require_folder_name(key: str) -> None:
 
 def subagent_key(agent_type: str, keys: list[str]) -> str | None:
     """Return the first subagents key the agent type matches by exact name, last namespace part, suffix, or other, else None."""
-    default = OTHER_KEY if OTHER_KEY in keys else None
+    match = subagent_match(agent_type, keys)
+    return None if match is None else match.key
+
+
+def subagent_match(agent_type: str, keys: list[str]) -> KeyMatch | None:
+    """Return the key the cascade picks and whether only the default other: took the type, else None."""
+    default = KeyMatch(OTHER_KEY, by_default=True) if OTHER_KEY in keys else None
     if not agent_type:
         return default
     local_name = agent_type.rsplit(NAMESPACE_SEPARATOR, 1)[-1]
     suffix_keys = [key for key in keys if key != OTHER_KEY and agent_type.endswith(key)]
-    return next((key for key in [agent_type, local_name, *suffix_keys] if key in keys), default)
+    named = next((key for key in [agent_type, local_name, *suffix_keys] if key in keys), None)
+    return default if named is None else KeyMatch(named, by_default=False)
 
 
 def _config_text(path: Path, project: Path) -> str:

@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from helpers import write
 
-from unharness.config import Config, Element, UnharnessError, load, old_layout, subagent_key
+from unharness.config import Config, Element, UnharnessError, load, old_layout, subagent_key, subagent_match
 from unharness.resolve import resolve_stack
 
 CONFIG_SCRIPT = Path(__file__).parent.parent / "src" / "unharness" / "config.py"
@@ -246,12 +246,36 @@ CASCADE = [
     ("explorer", ["implementer", "other"], "other"),
     ("explorer", ["implementer"], None),
     ("", [], None),
+    ("code-reviewer", ["reviewer", "viewer"], "reviewer"),
+    ("x:b:c", ["b:c"], "b:c"),
+    ("a:b:c", ["b:c", "c"], "c"),
+    ("ns:other", ["implementer", "other"], "other"),
+    ("ns:other", ["implementer"], None),
 ]
 
 
 @pytest.mark.parametrize("agent_type, keys, expected", CASCADE)
 def test_an_agent_type_matches_the_first_key_of_the_cascade(agent_type, keys, expected):
     assert subagent_key(agent_type, keys) == expected
+
+
+@pytest.mark.parametrize(
+    "agent_type, keys, by_default",
+    [
+        ("explorer", ["implementer", "other"], True),
+        ("", ["implementer", "other"], True),
+        ("other", ["implementer", "other"], False),
+        ("ns:other", ["implementer", "other"], False),
+        ("implementer", ["implementer", "other"], False),
+        ("my-implementer", ["implementer", "other"], False),
+    ],
+)
+def test_a_match_says_whether_only_the_default_stack_took_the_type(agent_type, keys, by_default):
+    assert subagent_match(agent_type, keys).by_default is by_default
+
+
+def test_a_type_that_matches_nothing_has_no_match():
+    assert subagent_match("explorer", ["implementer"]) is None
 
 
 @pytest.mark.parametrize("key", ["a/b", ".", ".."])
@@ -299,6 +323,17 @@ def test_a_project_in_the_new_layout_yields_no_commands(tmp_path):
     write_config(tmp_path, "you:\n  - dry\n")
 
     assert old_layout(tmp_path) == []
+
+
+def test_old_paths_with_their_new_path_yield_a_both_line_and_the_others_a_move_in_table_order(tmp_path):
+    make_old(tmp_path, ".manifestos.yaml", ".manifestos/config.yaml", ".manifestos.preamble.md", ".claude/digests", ".manifestos/digests")
+
+    assert old_layout(tmp_path) == [
+        "mkdir -p .manifestos",
+        "# both .manifestos.yaml and .manifestos/config.yaml exist; keep one and delete the other",
+        "mv .manifestos.preamble.md .manifestos/preamble.md",
+        "# both .claude/digests and .manifestos/digests exist; keep one and delete the other",
+    ]
 
 
 def test_an_existing_new_path_yields_a_both_line_in_place_of_the_move(tmp_path):
