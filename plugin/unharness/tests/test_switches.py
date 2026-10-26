@@ -152,6 +152,20 @@ def test_the_strip_table_has_one_row_per_removed_text_with_its_switches_and_defa
     assert strip_table(parse_switches(fixture_registry())) == FIXTURE_TABLE
 
 
+def test_an_autocompact_row_names_a_null_valued_setting_bare_and_says_what_the_option_passes():
+    switches = parse_switches(text_of(
+        entry(name="on", kind="settings", value=False, given=True, control=False, removes="On", option="--autocompact"),
+        entry(name="window", kind="settings", value=None, given="<size>", control=False, removes="Window", default=False, option="--autocompact"),
+        entry(name="mode", kind="settings", value="off", given={"a": "<size>"}, removes="Mode", option="--autocompact"),
+    ))
+
+    assert strip_table(switches).splitlines()[2:] == [
+        "| On | setting `on: false` | set; `--autocompact <size>` passes `true` |",
+        "| Window | setting `window` | kept; `--autocompact <size>` passes `<size>` |",
+        '| Mode | setting `mode: "off"` | stripped; `--autocompact <size>` passes `{"a": "<size>"}` |',
+    ]
+
+
 def test_the_switches_verb_prints_the_table_of_the_shipped_registry(capsys):
     assert main(["switches"]) == 0
 

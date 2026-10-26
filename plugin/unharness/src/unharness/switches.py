@@ -16,6 +16,7 @@ VALUED_OPTION = "--autocompact"
 OPTIONS = ("--keep-claude-md", "--keep-web-search", "--no-hooks", VALUED_OPTION)
 KEYS = ("name", "kind", "value", "removes", "documented", "control", "verified", "default", "option")
 GIVEN_KEY = "given"
+SIZE_PLACEHOLDER = "<size>"
 BOOLEAN_KEYS = ("documented", "control", "default")
 SHARED_ROW_KEYS = ("control", "default", "option")
 VERSION_PATTERN = re.compile(r"\d+\.\d+\.\d+")
@@ -135,7 +136,7 @@ def _switch_text(switch: Switch) -> str:
     if switch.kind == "env":
         return f"env `{switch.name}={switch.value}`"
     if switch.kind == "settings":
-        return f"setting `{switch.name}: {json.dumps(switch.value)}`"
+        return f"setting `{switch.name}`" if switch.value is None else f"setting `{switch.name}: {json.dumps(switch.value)}`"
     return f"`{switch.name}`" if switch.value is None else f"`{switch.name} {switch.value}`"
 
 
@@ -143,7 +144,13 @@ def _default_cell(switch: Switch) -> str:
     state = "kept" if not switch.default else "stripped" if switch.control else "set"
     if switch.option is None:
         return state
+    if switch.option == VALUED_OPTION:
+        return f"{state}; `{VALUED_OPTION} {SIZE_PLACEHOLDER}` passes `{_given_text(switch.given)}`"
     return f"{state}; `{switch.option}` {'strips' if state == 'kept' else 'keeps'}"
+
+
+def _given_text(given: Any) -> str:
+    return SIZE_PLACEHOLDER if given == SIZE_PLACEHOLDER else json.dumps(given)
 
 
 def _refusal(index: int, problem: str) -> UnharnessError:
