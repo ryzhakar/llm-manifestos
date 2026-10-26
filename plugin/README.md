@@ -175,7 +175,7 @@ Run it from the package, or from git at a tag:
 
 ```
 uvx unharness
-uvx --from "git+https://github.com/ryzhakar/llm-manifestos@v4.0.0#subdirectory=plugin/unharness" unharness
+uvx --from "git+https://github.com/ryzhakar/llm-manifestos@v4.0.1#subdirectory=plugin/unharness" unharness
 ```
 
 Inside a session, `bin/unharness` runs the copy bundled with the plugin; `UNHARNESS_FROM`, a path or a git URL, runs another source.

@@ -8,7 +8,7 @@
       "name": "manifesto",
       "source": "./plugin",
       "description": "Create concentrated manifesto declarations and bind Claude behavior to user-provided manifestos through identity-assumption protocols.",
-      "version": "4.0.0",
+      "version": "4.0.1",
       "author": {
         "name": "ryzhakar"
       },
