@@ -24,3 +24,6 @@
 2026-10-26T19:24+0200 | self | decision | queue 67 (hooks print one stdout line on config errors, superseding 22) and 68 (doctor is the one check command, no script) written; s3-spec asked to fold 67 into the spec
 2026-10-26T19:24+0200 | agent:s3-spec | receipt | queue 67 folded into spec part 4.0.0 (138 lines; Hook errors section; decision 13)
 2026-10-26T19:27+0200 | agent:u2-settings | receipt | U2 done: feat/4.0.0-settings 102a9b0..bd195de, report recon/2026-10-26/u2-report.md; checked: 303 tests pass, clean tree, 4 files touched; launch gained a defaulted read_file parameter (review item)
+2026-10-26T19:30+0200 | agent:u1-core | receipt | U1 done: feat/4.0.0-core 8b2f114..a1241e1, report recon/2026-10-26/u1-report.md; checked: 352 package tests, clean tree; hook suite red by design (hooks unit)
+2026-10-26T19:30+0200 | self | decision | U2 rebased onto core and fast-forwarded (core ae4c735, 365 tests); settings worktree and branch removed
+2026-10-26T19:30+0200 | self | delegation | worktrees hooks (feat/4.0.0-hooks) and doctor (feat/4.0.0-doctor) from ae4c735; u3-hooks and u4-doctor (sonnet implementers, background) launched from prompts/u3-hooks.md, u4-doctor.md
