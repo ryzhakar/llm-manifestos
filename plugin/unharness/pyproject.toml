@@ -1,6 +1,6 @@
 [project]
 name = "unharness"
-version = "3.7.2"
+version = "4.0.0"
 description = "Compile a manifesto stack into a session's system prompt and launch Claude Code with it."
 readme = "README.md"
 license = "MIT"
@@ -19,7 +19,7 @@ dependencies = []
 [project.urls]
 Homepage = "https://github.com/ryzhakar/llm-manifestos"
 Repository = "https://github.com/ryzhakar/llm-manifestos"
-Documentation = "https://github.com/ryzhakar/llm-manifestos/blob/v3.7.2/plugin/unharness/README.md"
+Documentation = "https://github.com/ryzhakar/llm-manifestos/blob/v4.0.0/plugin/unharness/README.md"
 
 [project.scripts]
 unharness = "unharness.cli:main"
