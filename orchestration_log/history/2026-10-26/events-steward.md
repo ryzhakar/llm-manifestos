@@ -65,3 +65,5 @@
 2026-10-26T20:35+0200 | self | delegation | f3-fix continued on worktree fix4 (feat/4.0.0-fix4 from 48959ac) for all five
 2026-10-26T20:39+0200 | agent:f3-fix | receipt | F4: 6d281bb..d8be461, 406 tests
 2026-10-26T20:39+0200 | self | decision | core fast-forwarded to d8be461; checked 406, hook OK; fix4 removed; d1-quality continued (d4-quality.md)
+2026-10-26T20:40+0200 | agent:d1-quality | receipt | d4-quality.md: ready to merge, 0/0/0 at d8be461
+2026-10-26T20:40+0200 | self | delegation | r1-release (sonnet) launched from prompts/r1-release.md: linearize, version 4.0.0, e2e checks, ff session/long-run, push main, tags v4.0.0 + pypi-4.0.0, publish run
