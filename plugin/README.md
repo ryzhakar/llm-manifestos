@@ -81,7 +81,7 @@ The launcher's input is reopened on the terminal, so the session reads the keybo
 - `unharness prompt [--config PATH] [--agent TYPE] [--digests] [--stack-digests] [--overlap] [--minified]` prints the compiled prompt; it stops when the interplay or commitments file is missing or its `<stack>` block differs from the current stack. Under `--minified` the same holds for the min pair. `--agent TYPE` compiles the stack of the `subagents:` key that TYPE matches, with the session files in `.manifestos/agents/<key>/`, and takes every mode flag.
 - `unharness stack [--config PATH] [--agent TYPE] [--diff] [SLUG ...]` prints the `<stack>` block and the constitution, exactly what a session binds to. Given slugs, it prints those manifestos alone. It takes no mode flag, since a session always binds to full texts. `--agent TYPE` prints the matched key's stack instead of the main one. `--diff` prints, for each of the four session files that is stale, the zero-context unified diff of its recorded `<stack>` lines against the current ones, `<path>: missing` for a missing file, and `<path>: no <stack> block` for a file without one; it exits 0 when every file is current and 1 otherwise. `--agent` and `--diff` each refuse slugs.
 - `unharness stamp DIGEST [--config PATH]` writes the digest's entry into its `index.json`.
-- `unharness doctor [--config PATH] [--digests] [--stack-digests] [--overlap] [--minified] [--claude-version X.Y.Z]` prints one line per check and exits 1 on any FAIL.
+- `unharness doctor [--config PATH] [--agent TYPE] [--digests] [--stack-digests] [--overlap] [--minified] [--claude-version X.Y.Z]` prints one line per check and exits 1 on any FAIL.
 - `unharness switches` prints the strip table below, generated from the switch registry.
 - `unharness launch [--keep-claude-md] [--keep-web-search] [--no-hooks] [--claude-version X.Y.Z] [PROMPT] [-- LAUNCHER [ARGS...]]` caches the prompt in `$XDG_CACHE_HOME/unharness/<sha256>.md`, or `~/.cache/unharness/` when unset, and runs the launcher with the switches below. The printed command ends in the terminal's own device, and in `/dev/tty` only when neither output is a terminal.
 
@@ -123,15 +123,18 @@ Each place keeps one `index.json`, in `.manifestos/digests/` and in the plugin's
 }
 ```
 
-`unharness doctor` reads files and runs `claude --version`, and makes no network call. Each line is `OK`, `WARN`, or `FAIL`, then the check and its detail. A problem with an artifact that `prompt` would load under the given flags is a FAIL; the same problem with an artifact it would not load is a WARN. An element that does not resolve leaves out the checks that need the stack: the digests, the cover, the session files, and the prompt size. After `claude`, a `switch registry` line gives the newest registry version and the entry count, and one `switch <kind> <name>` line per entry follows in registry order. These lines need no config and never FAIL. A switch line is `OK` when the entry is verified at the version launch chooses and that version is the one in use; it is `WARN` when the version in use differs, when the version is unknown, and when the entry is left out because it is not verified at the chosen version. `--claude-version X.Y.Z` replaces the detected version in the switch lines, for a launcher that is no program on PATH. An excerpt:
+`unharness doctor` reads files and runs `claude --version`, and makes no network call. Each line is `OK`, `WARN`, or `FAIL`, then the check and its detail. A problem with an artifact that `prompt` would load under the given flags is a FAIL; the same problem with an artifact it would not load is a WARN. The first line, `layout`, gives `.manifestos/` in the project folder, or one FAIL line per command that moves an old path, and then doctor skips `config` and every check that needs it. A `stack you` line follows the `element` lines. With `--agent TYPE`, an `agent match` line gives the key TYPE matches, a WARN when TYPE falls to `other:`, and a FAIL when nothing matches. Then one `stack subagents.<key>` line per key, in config order, gives the first problem among the key's elements, its empty list, and its four files in `.manifestos/agents/<key>/`, a FAIL for the matched key when `prompt --agent` would load the problem and a WARN otherwise. A `manifesto plugin` below 4.0.0 FAILs, since its hooks read the old layout. An element that does not resolve leaves out the checks that need the stack: the digests, the cover, the session files, and the prompt size. After `claude`, a `switch registry` line gives the newest registry version and the entry count, and one `switch <kind> <name>` line per entry follows in registry order. These lines need no config and never FAIL. A switch line is `OK` when the entry is verified at the version launch chooses and that version is the one in use; it is `WARN` when the version in use differs, when the version is unknown, and when the entry is left out because it is not verified at the chosen version. `--claude-version X.Y.Z` replaces the detected version in the switch lines, for a launcher that is no program on PATH. An excerpt:
 
 ```
 unharness doctor --digests
-OK config: .manifestos.yaml
+OK layout: /work/project/.manifestos
+OK config: /work/project/.manifestos/config.yaml
+OK stack you: 2 elements resolved
 OK digest dry: plugin, current
 OK cover: dry, kiss; 513 words
-FAIL .manifestos.interplay.md: .manifestos.interplay.md is missing; run /compile-commitments
-WARN .manifestos.interplay.min.md: .manifestos.interplay.min.md is missing; run /compile-commitments
+FAIL .manifestos/interplay.md: .manifestos/interplay.md is missing; run /compile-commitments
+WARN .manifestos/interplay.min.md: .manifestos/interplay.min.md is missing; run /compile-commitments
+WARN stack subagents.implementer: .manifestos/agents/implementer/commitments.md is stale (changed: dry); run /compile-commitments implementer
 WARN claude: /usr/local/bin/claude 2.1.312, not in the switch registry; launch uses switches verified at 2.1.309
 OK switch registry: newest 2.1.309; 13 switches
 OK prompt size: full 3541 words; shortest 818 words
