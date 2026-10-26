@@ -143,6 +143,11 @@ def _require_new_layout(project: Path) -> None:
         raise UnharnessError("\n".join([f"old layout in {project}; run these there:", *commands]))
 
 
+def falls_through_to_default(agent_type: str, keys: list[str]) -> bool:
+    """Say whether the agent type matches only the default stack other, by the last step of the cascade."""
+    return subagent_key(agent_type, keys) == OTHER_KEY and agent_type.rsplit(NAMESPACE_SEPARATOR, 1)[-1] != OTHER_KEY
+
+
 def _require_folder_name(key: str) -> None:
     if any(part in key for part in FOLDER_KEY_PARTS) or key in FOLDER_KEY_NAMES:
         raise UnharnessError(f"subagents key '{key}' cannot name a folder")

@@ -5,8 +5,8 @@ import os
 import sys
 from pathlib import Path
 
-from unharness.compile import FULL_FILES, MINIFIED_FILES, compile_prompt, stack_view
-from unharness.config import CONFIG_PATH, EMPTY_STACK_MESSAGE, UnharnessError, fail, load
+from unharness.compile import FULL_FILES, MINIFIED_FILES, SessionFiles, agent_files, compile_prompt, stack_view
+from unharness.config import CONFIG_PATH, EMPTY_STACK_MESSAGE, Config, Element, UnharnessError, fail, falls_through_to_default, load, subagent_key
 from unharness.digests import DIGESTS_FLAG, OVERLAP_FLAG, STACK_DIGESTS_FLAG, constitution_blocks, digest_mode, stamp_digest
 from unharness.doctor import Modes, claude_version, doctor, has_failed
 from unharness.launch import Options, cache_home, execute_launcher, launch, reopen_terminal, version_output, terminal_device
@@ -22,6 +22,7 @@ DOCTOR_VERB = "doctor"
 SWITCHES_VERB = "switches"
 CLAUDE_VERSION_FLAG = "--claude-version"
 MINIFIED_FLAG = "--minified"
+AGENT_FLAG = "--agent"
 MODE_FLAGS = (DIGESTS_FLAG, STACK_DIGESTS_FLAG, OVERLAP_FLAG, MINIFIED_FLAG)
 LAUNCHER_SEPARATOR = "--"
 
@@ -52,6 +53,7 @@ def _run(argv: list[str]) -> int:
     stack_parser.add_argument("slugs", nargs="*")
     for parser_of_verb in (prompt_parser, stack_parser):
         parser_of_verb.add_argument("--config", type=Path, default=CONFIG_PATH)
+        parser_of_verb.add_argument(AGENT_FLAG)
     for flag in MODE_FLAGS:
         prompt_parser.add_argument(flag, action="store_true")
     stamp_parser = verbs.add_parser(STAMP_VERB)
@@ -117,21 +119,39 @@ def _output(arguments: argparse.Namespace, login: Path) -> str:
     mode = digest_mode(arguments.digests, arguments.stack_digests, arguments.overlap) if verb == PROMPT_VERB else None
     config = load(arguments.config)
     if verb == STACK_VERB and arguments.slugs:
+        if arguments.agent is not None:
+            raise UnharnessError(f"{AGENT_FLAG} takes no slugs")
         return stack_view(resolve_stack(manifesto_elements(arguments.slugs), config.directory, config.registry, login))
-    if not config.you:
-        raise UnharnessError(EMPTY_STACK_MESSAGE)
-    documents = resolve_stack(config.you, config.directory, config.registry, login)
+    elements, session_files = _stack_to_bind(config, arguments.agent, verb == PROMPT_VERB and arguments.minified)
+    documents = resolve_stack(elements, config.directory, config.registry, login)
     if verb == STACK_VERB:
         return stack_view(documents)
-    session_files = MINIFIED_FILES if arguments.minified else FULL_FILES
     return compile_prompt(
         documents,
         load_preamble(config.directory).text,
         read_if_present(config.directory / session_files.interplay),
         read_if_present(config.directory / session_files.commitments),
-        constitution_blocks(config.you, documents, config.directory, manifesto_plugin_dir(config.registry, login), mode),
+        constitution_blocks(elements, documents, config.directory, manifesto_plugin_dir(config.registry, login), mode),
         session_files,
     )
+
+
+def _stack_to_bind(config: Config, agent_type: str | None, minified: bool) -> tuple[list[Element], SessionFiles]:
+    """Return the elements to bind and the session files that go with them, the matched subagents key's when agent_type is given."""
+    main_files = MINIFIED_FILES if minified else FULL_FILES
+    if agent_type is None:
+        if not config.you:
+            raise UnharnessError(EMPTY_STACK_MESSAGE)
+        return config.you, main_files
+    keys = list(config.subagents)
+    key = subagent_key(agent_type, keys)
+    if key is None:
+        raise UnharnessError(f"{agent_type} matches no subagents key and the config has no other:; keys: {', '.join(keys) or 'none'}")
+    if falls_through_to_default(agent_type, keys):
+        print(f"unharness: {agent_type} matches no subagents key; using other:, the default stack", file=sys.stderr)
+    if not config.subagents[key]:
+        raise UnharnessError(f"subagents.{key} is empty")
+    return config.subagents[key], agent_files(main_files, key)
 
 
 if __name__ == "__main__":

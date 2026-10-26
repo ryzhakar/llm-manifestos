@@ -1,10 +1,12 @@
 """Compile resolved documents and the session's own files into the system prompt."""
 
 import re
+from pathlib import PurePosixPath
 from collections.abc import Sequence
 from dataclasses import dataclass
 
 from unharness.config import (
+    AGENTS_PATH,
     COMMITMENTS_PATH,
     INTERPLAY_PATH,
     MINIFIED_COMMITMENTS_PATH,
@@ -23,10 +25,16 @@ WRITING_SKILL = "/compile-commitments"
 class SessionFiles:
     interplay: str
     commitments: str
+    fix_command: str = WRITING_SKILL
 
 
 FULL_FILES = SessionFiles(INTERPLAY_PATH, COMMITMENTS_PATH)
 MINIFIED_FILES = SessionFiles(MINIFIED_INTERPLAY_PATH, MINIFIED_COMMITMENTS_PATH)
+
+
+def agent_files(files: SessionFiles, key: str) -> SessionFiles:
+    """Return the pair of session files the subagents key has beside the main pair, with the command that rewrites them."""
+    return SessionFiles(*(f"{AGENTS_PATH}/{key}/{PurePosixPath(name).name}" for name in (files.interplay, files.commitments)), f"{WRITING_SKILL} {key}")
 
 
 def compile_prompt(
@@ -35,8 +43,8 @@ def compile_prompt(
 ) -> str:
     """Return the system prompt: preamble, constitution, interplay, commitments; stop if a session file is stale."""
     session_files = [
-        _current_body(files.interplay, interplay, documents),
-        _current_body(files.commitments, commitments, documents),
+        _current_body(files.interplay, interplay, documents, files.fix_command),
+        _current_body(files.commitments, commitments, documents, files.fix_command),
     ]
     return "\n\n".join([harness_block(preamble), constitution_block(documents if constitution is None else constitution), *session_files])
 
@@ -70,17 +78,17 @@ def _tagged(block: Document) -> str:
     return f"<{block.name}{governs}>\n{block.text}\n</{block.name}>"
 
 
-def _current_body(file_name: str, text: str | None, documents: list[Document]) -> str:
+def _current_body(file_name: str, text: str | None, documents: list[Document], fix_command: str = WRITING_SKILL) -> str:
     """Return the session file without its stack block, or stop if the file is missing or stale."""
     if text is None:
-        raise UnharnessError(f"{file_name} is missing; run {WRITING_SKILL}")
+        raise UnharnessError(f"{file_name} is missing; run {fix_command}")
     recorded = STACK_BLOCK.match(text)
     if not recorded:
-        raise UnharnessError(f"{file_name} has no <stack> block; run {WRITING_SKILL}")
+        raise UnharnessError(f"{file_name} has no <stack> block; run {fix_command}")
     current_lines = _stack_lines(documents)
     recorded_lines = recorded.group(1).split("\n")
     if recorded_lines != current_lines:
-        raise UnharnessError(f"{file_name} is stale ({_difference(recorded_lines, current_lines)}); run {WRITING_SKILL}")
+        raise UnharnessError(f"{file_name} is stale ({_difference(recorded_lines, current_lines)}); run {fix_command}")
     return text[recorded.end():].strip()
 
 
