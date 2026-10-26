@@ -11,3 +11,4 @@ Units:
 - Review items from U2: a trailing bare `--settings` with no value passes through untouched beside launch's own (likely two --settings reach claude); defaulted `read_file` parameter on launch to wire from cli.py; one red commit (9e62aa2) in history.
 - U1 and U2 done, folded into core ae4c735 (365 tests). U3 hooks + SCHEMA and U4 doctor launched on their own branches from ae4c735. Next: merge both, U5 skills + docs + repo's own move, review, e2e, release.
 - U3 done, core 9968e96. Before main: rebase core onto session/long-run to drop the agents' merge commits (linear main). Later briefs: no merges.
+- U4 done, core c03d2dd (385 tests). D1 reviews (spec, quality) launched on the code; U5 docs running.

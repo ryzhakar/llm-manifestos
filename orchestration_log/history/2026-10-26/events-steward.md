@@ -35,3 +35,4 @@
 2026-10-26T19:36+0200 | self | delegation | wake 6226d38c set for 20:07 covering u4-doctor and u5-docs
 2026-10-26T19:37+0200 | agent:u4-doctor | receipt | U4 done, report u4-report.md; two edits outside scope (fix_command on session_file_problem, shared no_subagent_key_message)
 2026-10-26T19:37+0200 | self | decision | U4 rebased onto core and fast-forwarded (core c03d2dd): 385 package tests, hook suite OK; doctor worktree removed
+2026-10-26T19:37+0200 | self | delegation | d1-spec and d1-quality (opus, background, read-only) launched on core c03d2dd from prompts/d1-review.md; reports recon/2026-10-26/d1-spec.md, d1-quality.md
