@@ -1,4 +1,4 @@
-# .manifestos.yaml Schema Reference
+# .manifestos/config.yaml Schema Reference
 
 ## Format variants
 
@@ -40,11 +40,11 @@ subagents:
 
 ## Where the config lives
 
-1. Hooks: `$CLAUDE_PROJECT_DIR/.manifestos.yaml`, else `.manifestos.yaml` in the current folder. `unharness`: the `--config` path, default `.manifestos.yaml` in the current folder.
-2. Only when that file is absent: the `## Active Manifestos` section of the `CLAUDE.md` beside it, up to the next `## ` heading, read as the same YAML.
+1. Hooks: `.manifestos/config.yaml` in `$CLAUDE_PROJECT_DIR`, else in the current folder. `unharness`: the `--config` path, default `.manifestos/config.yaml` in the current folder.
+2. Only when that file is absent: the `## Active Manifestos` section of the `CLAUDE.md` in the project folder, the folder that holds `.manifestos/`, up to the next `## ` heading, read as the same YAML.
 3. Neither: the hooks stay silent; `unharness` stops with `no config: tried <path> and the Active Manifestos section of <CLAUDE.md path>`.
 
-One module reads it: `unharness/src/unharness/config.py`. The hooks run it with `python3 <config> --json`, which prints `directory`, `registry` (the resolved `manifesto_dir`, or empty), and each element's `name`, `purpose`, `source_type`, and `reference`; `unharness` imports it. It needs only the standard library and runs on Python 3.9 or later when run as a script.
+One module reads it: `unharness/src/unharness/config.py`. The hooks run it with `python3 <config> --json --project <folder>`, which prints `directory` (the project folder), `registry` (the resolved `manifesto_dir`, or empty), and each element's `name`, `purpose`, `source_type`, and `reference`; `unharness` imports it. It needs only the standard library and runs on Python 3.9 or later when run as a script.
 
 ---
 
@@ -108,7 +108,11 @@ The login folder is `$CLAUDE_CONFIG_DIR`, else `~/.claude`. Versions compare by 
 
 ## Errors
 
-Every error is one line. `unharness` prints `unharness: <line>` on stderr and exits 1. A hook prints the same line on stderr, prints nothing on stdout, and exits 0. A missing config is the exception: the hooks stay silent, and `config.py` exits 2 instead of 1 so they can tell it apart.
+Every error is one line, except the old-layout error, which holds one line per command. `unharness` prints `unharness: <message>` on stderr and exits 1. When `config.py --json` exits 1, or a config, parse, or resolve error otherwise stops a hook, SessionStart, PostCompact, and SubagentStart each print the whole message on stderr, then one line on stdout in the hook's own output form, plain text for SessionStart and `hookSpecificOutput.additionalContext` for the other two, and exit 0. The line enters the session's context:
+
+    No manifesto bound: <the message's first line>; run unharness doctor for the fix.
+
+UserPromptSubmit prints the message on stderr alone. A missing config is the exception: the hooks stay silent on both streams, and `config.py` exits 2 instead of 1 so they can tell it apart.
 
 | Line | Cause |
 |------|-------|
@@ -120,8 +124,18 @@ Every error is one line. `unharness` prints `unharness: <line>` on stderr and ex
 | `element N of <list> has source 'S' that is none of manifesto <name>, skill <plugin>:<skill>, skill <skill>, or file <path>; write a path as file <path>` | a legacy or malformed source |
 | `element N of <list> name 'X' must hold no whitespace; add name:` | a name, or a file stem used as one, that holds whitespace |
 | `cannot place the line 'L'; check its indent`, `the line 'L' is indented with a tab; indent with spaces`, `key 'K' appears twice` | the YAML reader refuses a line it cannot place, a tab indent, or a repeated key |
+| `old layout in <project folder>; run these there:` and then one command per line | an old path such as `.manifestos.yaml` or `.claude/digests` exists in the project folder; a `# both <old> and <new> exist; keep one and delete the other` line stands for a pair whose new path exists |
+| `key 'K' holds a block scalar; block scalars are not supported; write the value on one line`, `the line 'L' holds a block scalar; ...` | a value that is `>` or `|` with an optional `-` or `+` and digit, as a mapping value or a list item, in the config or in manifesto frontmatter |
+| `subagents key 'K' cannot name a folder` | a `subagents:` key that holds `/` or is `.` or `..` |
 | `the stack is empty` | `unharness prompt`, or `stack` with no slug, and no element in `you` |
-| `<file> is missing`, `<file> is stale (...)`, `<file> has no <stack> block` | a session file of `unharness prompt`, the min pair under `--minified`; each names `/compile-commitments` |
+| `<file> is missing`, `<file> is stale (...)`, `<file> has no <stack> block` | a session file of `unharness prompt`, the min pair under `--minified`; each names the file by its path under the project folder and ends `run /compile-commitments`, or `run /compile-commitments <key>` for `.manifestos/agents/<key>/` under `--agent` |
+| `<type> matches no subagents key and the config has no other:; keys: <key>, <key>` | `--agent` with a type no key matches and no `other:`; `keys: none` when the config has no subagents |
+| `subagents.<key> is empty` | the matched `subagents:` key holds no element |
+| `<type> matches no subagents key; using other:, the default stack` | not an error: the one line `--agent` prints on stderr when the type lands on `other:` by the last step |
+| `--agent takes no slugs`, `--diff takes no slugs` | `stack --agent` or `stack --diff` with slugs |
+| `pass --settings once after --` | two or more `--settings` after `--` in `launch` |
+| `--settings file <path> cannot be read: <reason>`, `--settings <value> is not a JSON object` | the owner's `--settings` names an unreadable file, or holds text that is no JSON object |
+| `your --settings sets <key>; the strip's value is left out` | not an error: the note `launch` prints on stderr for each key the owner's `--settings` shares with the strip |
 | `--overlap requires --stack-digests` | `--overlap` without `--stack-digests` |
 | `manifesto <slug> appears twice in the stack; digest modes need each once` | a digest flag on a stack that lists one manifesto twice |
 | `no digest for <slug>: tried <local path> and <plugin path>; run /compile-digest <slug>` | a digest flag, and no single or stack digest covers the manifesto |
@@ -135,7 +149,7 @@ Every error is one line. `unharness` prints `unharness: <line>` on stderr and ex
 
 ## YAML subset
 
-Block mappings and lists of string scalars, indented with spaces. A list must be indented deeper than its key; a list written at its key's own indent stops the load. Whole-line and trailing `#` comments are dropped. A quoted scalar loses one pair of quotes. `~`, `null`, and an empty value are null. Flow collections, anchors, and multiline scalars are not supported. A line the reader cannot place, such as a mis-indented list item or element field, a tab in the indent, and a repeated key, stops the load with an error that names the line or key. Manifesto frontmatter is read by the same reader.
+Block mappings and lists of string scalars, indented with spaces. A list must be indented deeper than its key; a list written at its key's own indent stops the load. Whole-line and trailing `#` comments are dropped. A quoted scalar loses one pair of quotes. `~`, `null`, and an empty value are null. Flow collections, anchors, and block scalars (`>` and `|`) are not supported; a block scalar stops the load with its own error. A line the reader cannot place, such as a mis-indented list item or element field, a tab in the indent, and a repeated key, stops the load with an error that names the line or key. Manifesto frontmatter is read by the same reader.
 
 ---
 
@@ -145,7 +159,7 @@ Block mappings and lists of string scalars, indented with spaces. A list must be
 |-----|---------|
 | `you:` | Orchestrator constitution. Injected by SessionStart and PostCompact hooks as natural language prose. |
 | `subagents:` | Mapping of agent-type keys. Each key names a list of elements for that agent type. |
-| `other:` (under `subagents:`) | Catch-all for agents not matching any specific key. |
+| `other:` (under `subagents:`) | The default stack: the key for agents matching no specific key. |
 
 ---
 
@@ -170,13 +184,13 @@ The orchestrator is NOT responsible for supplying base subagent bindings — Sub
 
 ### SubagentStart
 
-Reads `agent_type` from stdin JSON. Matches against `subagents:` keys in `.manifestos.yaml` using this resolution order:
+Reads `agent_type` from stdin JSON. Matches against `subagents:` keys in `.manifestos/config.yaml` with `subagent_key` from `config.py`, which `unharness prompt --agent` calls too, so the hook and the package cannot disagree. The cascade:
 
 1. Exact key match
 2. Prefix-strip match (the part after the last `:`)
-3. Suffix match (a key that ends `agent_type`)
-4. `other:` catch-all
-5. Static fallback (no config)
+3. Suffix match (the first key in config order, `other` excepted, that `agent_type` ends with)
+4. `other:`, the default stack; an empty `agent_type` goes straight here
+5. Static fallback (no key matches and the config has no `other:`)
 
 Injects the FULL binding ceremony — same resolution protocol, transitive reading, interplay analysis, and manifesto-oath mandate as the orchestrator hooks. This is a real binding injection, not a reminder.
 
