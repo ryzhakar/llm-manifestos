@@ -47,3 +47,5 @@
 2026-10-26T20:15+0200 | self | delegation | worktree fix (feat/4.0.0-fix) from core c03d2dd; f1-fix (sonnet implementer) launched from prompts/f1-fix.md for spec findings 2-4; then a fresh spec review, then the quality review
 2026-10-26T20:16+0200 | agent:u5-docs | receipt | U5 done: skills, READMEs, plugin README doctor lines, repo move, implementer session files; report u5-report.md
 2026-10-26T20:16+0200 | self | decision | U5 rebased onto core (one conflict in plugin/unharness/README.md: U5 lines for prompt/stack/stamp, U4 line for doctor) and fast-forwarded: core 79228ad; checked 385 tests, hook suite OK, just readme clean, doctor --agent dev-cycle:implementer matches implementer with current files, stack --diff exit 0; doctor FAILs only the installed plugin floor (3.6.0), as expected before install
+2026-10-26T20:17+0200 | agent:f1-fix | receipt | F1 done: 4180061, fff5bdb, 35b0a5d; report f1-report.md
+2026-10-26T20:17+0200 | self | decision | F1 rebased onto core and fast-forwarded: core fcce0f2, 389 tests, hook suite OK; fix worktree removed; d1-spec asked to re-review 0972592..fcce0f2 (docs included now)
