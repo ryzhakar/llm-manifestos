@@ -2,9 +2,9 @@
 
 import difflib
 import re
-from pathlib import PurePosixPath
 from collections.abc import Sequence
 from dataclasses import dataclass
+from pathlib import PurePosixPath
 
 from unharness.config import (
     AGENTS_PATH,

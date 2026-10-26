@@ -5,11 +5,39 @@ import os
 import sys
 from pathlib import Path
 
-from unharness.compile import FULL_FILES, MINIFIED_FILES, SessionFiles, agent_files, compile_prompt, session_file_diff, stack_view
-from unharness.config import CONFIG_PATH, EMPTY_STACK_MESSAGE, Config, Element, UnharnessError, empty_key_message, fail, load, no_subagent_key_message, subagent_match
+from unharness.compile import (
+    FULL_FILES,
+    MINIFIED_FILES,
+    SessionFiles,
+    agent_files,
+    compile_prompt,
+    session_file_diff,
+    stack_view,
+)
+from unharness.config import (
+    CONFIG_PATH,
+    EMPTY_STACK_MESSAGE,
+    Config,
+    Element,
+    UnharnessError,
+    empty_key_message,
+    fail,
+    load,
+    no_subagent_key_message,
+    subagent_match,
+)
 from unharness.digests import DIGESTS_FLAG, OVERLAP_FLAG, STACK_DIGESTS_FLAG, constitution_blocks, digest_mode, stamp_digest
 from unharness.doctor import Modes, claude_version, doctor, has_failed
-from unharness.launch import Options, cache_home, execute_launcher, launch, read_text_file, reopen_terminal, version_output, terminal_device
+from unharness.launch import (
+    Options,
+    cache_home,
+    execute_launcher,
+    launch,
+    read_text_file,
+    reopen_terminal,
+    terminal_device,
+    version_output,
+)
 from unharness.resolve import login_dir, manifesto_elements, manifesto_plugin_dir, resolve_stack
 from unharness.session import load_preamble, read_if_present
 from unharness.switches import shipped_switches, strip_table

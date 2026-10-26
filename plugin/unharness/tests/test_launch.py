@@ -473,6 +473,7 @@ def test_the_owner_value_wins_a_shared_key_and_launch_notes_each_one_on_stderr(t
         "unharness: your --settings sets outputStyle; the strip's value is left out\n"
     )
 
+
 def test_a_nested_owner_object_replaces_the_strips_whole_value(tmp_path, capsys):
     argv, _ = launched_with(["--settings", '{"attribution":{"commit":"x"}}'], tmp_path, capsys)
 
