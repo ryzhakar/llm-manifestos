@@ -74,3 +74,4 @@
 2026-10-26T20:45+0200 | self | discovery | verified: origin/main, origin/session/long-run, HEAD at 643eaec; both tags on it; run conclusion success; PyPI unharness 4.0.0; .manifestos/ present in the main checkout
 2026-10-26T20:45+0200 | self | decision | core worktree and branch removed; wake 41bc9237 deleted; summary-steward.md and baseline-steward.md written
 2026-10-26T20:45+0200 | self | span-event | close; span steward: 4.0.0 shipped at 643eaec, clean tree after this commit; open: queue 56, plugin update to 4.0.0 in the logins, review of 64-70; next: owner installs manifesto plugin 4.0.0
+2026-10-26T20:59+0200 | peer:gym/trainer-u3 | receipt | [notice]: manifesto plugin 4.0.0 reached all 8 logins at 20:51 through the shared plugins link; live old-layout sessions warned by [hazard]; 16 folders still hold .manifestos.yaml (list /Users/ryzhakar/pp/gym/docs/orchestration_log/recon/2026-10-26/cf/old-layout-folders.md); gym moved (0e6341f)
