@@ -57,3 +57,5 @@
 2026-10-26T20:20+0200 | agent:f2-fix | receipt | f351b5c, one line; validate passed
 2026-10-26T20:20+0200 | self | delegation | core fast-forwarded to f351b5c; d2-docs continued for a re-review (verdict d3-docs.md)
 2026-10-26T20:21+0200 | agent:d2-docs | receipt | d3-docs.md: Verdict: PASS
+2026-10-26T20:23+0200 | agent:d1-quality | receipt | d2-quality.md: not ready, 3 critical (doctor --agent FAILs main-stack files; comments on changed shell lines), 9 important, 5 minor
+2026-10-26T20:23+0200 | self | decision | queue 69 (example rows over hypothesis); f3-fix launched on worktree fix3 for every other finding
