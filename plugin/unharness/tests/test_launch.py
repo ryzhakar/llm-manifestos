@@ -488,3 +488,43 @@ def test_the_owner_settings_pass_alone_when_no_settings_entry_passes(tmp_path, c
     )
 
     assert commands[0] == ["fake", "--system-prompt-file", str(cached_prompt(tmp_path)), "--settings", '{"model":"opus"}']
+
+
+@pytest.mark.parametrize("size", ["99", "1001k", "0", "500m", "5.5k", "k", "-5", " 500k", ""])
+def test_a_size_outside_100k_to_1000k_stops_launch_before_any_version_run_or_cache_file(size, tmp_path):
+    message = f"--autocompact takes a whole number of thousands of tokens from 100 to 1000, such as 500k; got {size}"
+    with pytest.raises(UnharnessError) as refusal:
+        launch(PROMPT, Options(False, False, False, [], autocompact=size), shipped_switches(), {}, tmp_path, TERMINAL, never, never, never, never)
+
+    assert str(refusal.value) == message
+    assert list(tmp_path.iterdir()) == []
+
+
+AUTOCOMPACT_ENTRIES = [
+    entry(name="enabled", kind="settings", value=False, given=True, control=False, removes="On", option="--autocompact"),
+    entry(name="window", kind="settings", value=None, given="<size>", control=False, removes="Window", default=False, option="--autocompact"),
+]
+
+
+@pytest.mark.parametrize(("size", "tokens"), [("500k", 500000), ("500K", 500000), ("500", 500000), ("100", 100000), ("1000k", 1000000)])
+def test_a_size_passes_its_tokens_as_the_window_and_the_given_values_in_place_of_the_defaults(size, tokens, tmp_path, capsys):
+    command = printed_command_of(AUTOCOMPACT_ENTRIES, Options(False, False, False, [], autocompact=size), tmp_path, capsys)
+
+    assert settings_of(command) == {"enabled": True, "window": tokens}
+
+
+def test_without_autocompact_the_defaults_pass_and_the_window_stays_out(tmp_path, capsys):
+    command = printed_command_of(AUTOCOMPACT_ENTRIES, Options(False, False, False, []), tmp_path, capsys)
+
+    assert settings_of(command) == {"enabled": False}
+
+
+@pytest.mark.parametrize(("size", "note"), [("500k", "unharness: --autocompact has no switch verified at 2.1.309; it passes nothing\n"), (None, "")])
+def test_a_version_with_no_autocompact_entry_passes_none_and_notes_it_only_when_the_option_is_given(size, note, tmp_path, capsys):
+    entries = [entry(), *(entry(**{**fields, "verified": ["2.1.300"]}) for fields in AUTOCOMPACT_ENTRIES)]
+
+    launch(PROMPT, Options(False, False, False, [], autocompact=size), parse_switches(json.dumps(entries)), {}, tmp_path, TERMINAL, never, never, at_tested, never)
+
+    output = capsys.readouterr()
+    assert "--settings" not in output.out
+    assert output.err == note

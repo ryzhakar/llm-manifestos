@@ -2,18 +2,19 @@
 
 import json
 import os
+import re
 import shlex
 import shutil
 import subprocess
 import sys
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from hashlib import sha256
 from pathlib import Path
 from typing import IO
 
 from unharness.config import TEXT_ENCODING, UnharnessError
-from unharness.switches import Switch, choose_version, newest_version, parse_version, require_version
+from unharness.switches import SIZE_PLACEHOLDER, VALUED_OPTION, Switch, choose_version, newest_version, parse_version, require_version
 
 CACHE_FOLDER = "unharness"
 CACHE_VARIABLE = "XDG_CACHE_HOME"
@@ -30,7 +31,12 @@ SETTINGS_FLAG = "--settings"
 VERSION_FLAG = "--version"
 VERSION_TIMEOUT_SECONDS = 10
 INTERACTIVE_COMMAND_FLAG = "-ic"
-OPTION_ATTRIBUTES = {"--keep-claude-md": "keep_claude_md", "--keep-web-search": "keep_web_search", "--no-hooks": "no_hooks"}
+OPTION_ATTRIBUTES = {
+    "--keep-claude-md": "keep_claude_md", "--keep-web-search": "keep_web_search", "--no-hooks": "no_hooks", "--autocompact": "autocompact",
+}
+AUTOCOMPACT_THOUSANDS = (100, 1000)
+TOKENS_PER_THOUSAND = 1000
+SIZE_PATTERN = re.compile(r"([0-9]+)[kK]?")
 
 
 @dataclass(frozen=True)
@@ -40,6 +46,7 @@ class Options:
     no_hooks: bool
     launcher: list[str]
     claude_version: str | None = None
+    autocompact: str | None = None
 
 
 def read_text_file(path: str) -> str:
@@ -62,10 +69,12 @@ def launch(
     """Cache the prompt, then print the launch command, or run the launcher and return its status."""
     if not prompt.strip():
         raise UnharnessError("the prompt is empty")
+    autocompact_tokens = _autocompact_tokens(options.autocompact)
     owner_words, owner_settings = _split_owner_settings(options.launcher[1:], read_file)
     chosen = _chosen_version(switches, options, environ, version_of)
     prompt_file = _write_prompt(prompt, cache_home)
-    passed = _passed_switches(switches, options, chosen)
+    passed = _passed_switches(switches, options, chosen, autocompact_tokens)
+    _note_autocompact_unverified(passed, autocompact_tokens, chosen)
     variables = _strip_environment(passed)
     settings, overridden_keys = _merged_settings(owner_settings, _strip_settings(passed))
     _note_overridden_settings(overridden_keys)
@@ -129,6 +138,17 @@ def reopen_terminal(
         pass
 
 
+def _autocompact_tokens(size: str | None) -> int | None:
+    """Return the --autocompact SIZE in tokens, None when the option is absent, refusing a SIZE outside Claude Code's bounds."""
+    if size is None:
+        return None
+    matched = SIZE_PATTERN.fullmatch(size)
+    lowest, highest = AUTOCOMPACT_THOUSANDS
+    if matched is None or not lowest <= int(matched.group(1)) <= highest:
+        raise UnharnessError(f"--autocompact takes a whole number of thousands of tokens from {lowest} to {highest}, such as 500k; got {size}")
+    return int(matched.group(1)) * TOKENS_PER_THOUSAND
+
+
 def _on_path(program: str, environ: Mapping[str, str]) -> bool:
     return bool(shutil.which(program, path=environ.get("PATH")))
 
@@ -156,9 +176,30 @@ def _chosen_version(
     return chosen
 
 
-def _passed_switches(switches: Sequence[Switch], options: Options, chosen: str) -> list[Switch]:
-    """Return the switches verified at the chosen version whose default, inverted by its given option, is true."""
-    return [switch for switch in switches if chosen in switch.verified and switch.default != _option_given(switch, options)]
+def _passed_switches(switches: Sequence[Switch], options: Options, chosen: str, autocompact_tokens: int | None) -> list[Switch]:
+    """Return the switches verified at the chosen version that pass under the options, each holding the value it passes."""
+    verified = [switch for switch in switches if chosen in switch.verified]
+    return [_with_passed_value(switch, options, autocompact_tokens) for switch in verified if _passes(switch, options)]
+
+
+def _note_autocompact_unverified(passed: Sequence[Switch], autocompact_tokens: int | None, chosen: str) -> None:
+    """Write a note on stderr when --autocompact is given and no switch of it is verified at the chosen version."""
+    if autocompact_tokens is not None and not any(switch.option == VALUED_OPTION for switch in passed):
+        print(f"unharness: {VALUED_OPTION} has no switch verified at {chosen}; it passes nothing", file=sys.stderr)
+
+
+def _passes(switch: Switch, options: Options) -> bool:
+    """Return whether a switch passes: its default inverted by its given option, or, for the valued option, its default or the option given."""
+    if switch.option == VALUED_OPTION:
+        return switch.default or _option_given(switch, options)
+    return switch.default != _option_given(switch, options)
+
+
+def _with_passed_value(switch: Switch, options: Options, autocompact_tokens: int | None) -> Switch:
+    """Return the switch holding its given value, the size in tokens for the placeholder, when its valued option is given."""
+    if switch.option != VALUED_OPTION or not _option_given(switch, options):
+        return switch
+    return replace(switch, value=autocompact_tokens if switch.given == SIZE_PLACEHOLDER else switch.given)
 
 
 def _option_given(switch: Switch, options: Options) -> bool:
