@@ -402,3 +402,28 @@ def stub_program(folder: Path, name: str, body: str) -> Path:
     path.write_text(f"#!/bin/sh\n{body}\n")
     path.chmod(0o755)
     return path
+
+
+def launched_with(owner_words: list[str], tmp_path, capsys, read_file=never) -> tuple[list[str], str]:
+    """Return the command launch executes for a launcher given owner_words, and what it wrote on stderr."""
+    commands = []
+    launch(
+        PROMPT, Options(False, False, False, ["fake", *owner_words]), shipped_switches(), {}, tmp_path, TERMINAL,
+        lambda device: None, lambda argv, env: commands.append(argv) or 0, at_tested, read_file,
+    )
+    return commands[0], capsys.readouterr().err
+
+
+def test_two_owner_settings_flags_stop_launch_before_the_launcher_runs(tmp_path, capsys):
+    with pytest.raises(UnharnessError, match="^pass --settings once after --$"):
+        launched_with(["--settings", "{}", "--settings={}"], tmp_path, capsys)
+
+
+@pytest.mark.parametrize("owner_words", [["--settings", '{"model":"opus"}'], ['--settings={"model":"opus"}']])
+def test_an_owner_settings_flag_leaves_the_arguments_and_passes_one_merged_settings(owner_words, tmp_path, capsys):
+    argv, err = launched_with(["--print", *owner_words, "hello"], tmp_path, capsys)
+
+    assert argv[:2] == ["fake", "--print"] and argv[2] == "hello"
+    assert argv.count("--settings") == 1
+    assert settings_of(argv) == {"model": "opus", **DEFAULT_SETTINGS}
+    assert err == ""

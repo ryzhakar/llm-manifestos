@@ -42,6 +42,11 @@ class Options:
     claude_version: str | None = None
 
 
+def read_text_file(path: str) -> str:
+    """Return the file's text, read as UTF-8."""
+    return Path(path).read_text(encoding=TEXT_ENCODING)
+
+
 def launch(
     prompt: str,
     options: Options,
@@ -52,21 +57,23 @@ def launch(
     reopen_stdin: Callable[[str], None],
     execute: Callable[[list[str], dict[str, str]], int],
     version_of: Callable[[list[str], Mapping[str, str]], str],
+    read_file: Callable[[str], str] = read_text_file,
 ) -> int:
     """Cache the prompt, then print the launch command, or run the launcher and return its status."""
     if not prompt.strip():
         raise UnharnessError("the prompt is empty")
+    owner_words, owner_settings = _split_owner_settings(options.launcher[1:], read_file)
     chosen = _chosen_version(switches, options, environ, version_of)
     prompt_file = _write_prompt(prompt, cache_home)
     passed = _passed_switches(switches, options, chosen)
     variables = _strip_environment(passed)
-    arguments = _strip_arguments(prompt_file, passed)
+    arguments = _strip_arguments(prompt_file, passed, owner_settings)
     assignments = [f"{name}={value}" for name, value in variables.items()]
     if not options.launcher:
         print(shlex.join(["env", *assignments, DEFAULT_LAUNCHER, *arguments]), f"<{terminal}")
         return 0
     reopen_stdin(terminal)
-    return execute([*options.launcher, *arguments], {**environ, **variables})
+    return execute([*options.launcher[:1], *owner_words, *arguments], {**environ, **variables})
 
 
 def cache_home(environ: Mapping[str, str], home: Path) -> Path:
@@ -160,11 +167,41 @@ def _strip_environment(passed: Sequence[Switch]) -> dict[str, str]:
     return {**{switch.name: switch.value for switch in passed if switch.kind == "env"}, **STAND_DOWN_MARKER}
 
 
-def _strip_arguments(prompt_file: Path, passed: Sequence[Switch]) -> list[str]:
+def _strip_arguments(prompt_file: Path, passed: Sequence[Switch], owner_settings: dict) -> list[str]:
     flags = [word for switch in passed if switch.kind == "flag" for word in _flag_words(switch)]
-    settings = {switch.name: switch.value for switch in passed if switch.kind == "settings"}
+    settings = _merged_settings(owner_settings, {switch.name: switch.value for switch in passed if switch.kind == "settings"})
     settings_words = [SETTINGS_FLAG, json.dumps(settings, separators=(",", ":"))] if settings else []
     return [SYSTEM_PROMPT_FLAG, str(prompt_file), *flags, *settings_words]
+
+
+def _merged_settings(owner: dict, strip: dict) -> dict:
+    """Return the owner's keys in their order, then each strip key the owner did not set."""
+    return {**owner, **{key: value for key, value in strip.items() if key not in owner}}
+
+
+def _split_owner_settings(words: list[str], read_file: Callable[[str], str]) -> tuple[list[str], dict]:
+    """Return the words without the owner's --settings, and its object, empty when the owner passed none."""
+    rest: list[str] = []
+    values: list[str] = []
+    index = 0
+    while index < len(words):
+        word = words[index]
+        if word == SETTINGS_FLAG and index + 1 < len(words):
+            values.append(words[index + 1])
+            index += 2
+            continue
+        if word.startswith(SETTINGS_FLAG + "="):
+            values.append(word.removeprefix(SETTINGS_FLAG + "="))
+        else:
+            rest.append(word)
+        index += 1
+    if len(values) > 1:
+        raise UnharnessError(f"pass {SETTINGS_FLAG} once after --")
+    return rest, _owner_object(values[0], read_file) if values else {}
+
+
+def _owner_object(value: str, read_file: Callable[[str], str]) -> dict:
+    return json.loads(value)
 
 
 def _flag_words(switch: Switch) -> list[str]:
