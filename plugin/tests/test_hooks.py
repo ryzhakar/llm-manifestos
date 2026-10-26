@@ -2,6 +2,7 @@
 
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 import sys
@@ -23,7 +24,7 @@ def tagline_of(path):
     raise AssertionError("no tagline in " + path)
 
 
-def run_hook(script, config, stdin="", plugin_root=PLUGIN_ROOT, files=None, setup_dirs=(), **extra_env):
+def run_hook(script, config, stdin="", plugin_root=PLUGIN_ROOT, files=None, setup_dirs=(), hooks=HOOKS, **extra_env):
     """Run one hook in a fresh project folder, with no config file when config is None; the folder's path rides on the result as `project`."""
     with tempfile.TemporaryDirectory() as project:
         if config is not None:
@@ -38,7 +39,7 @@ def run_hook(script, config, stdin="", plugin_root=PLUGIN_ROOT, files=None, setu
         env = {k: v for k, v in os.environ.items() if k != "UNHARNESS"}
         env.update(CLAUDE_PLUGIN_ROOT=plugin_root, CLAUDE_PROJECT_DIR=project, **extra_env)
         result = subprocess.run(
-            ["bash", os.path.join(HOOKS, script)],
+            ["bash", os.path.join(hooks, script)],
             input=stdin, capture_output=True, text=True, env=env, timeout=30,
         )
         result.project = project
@@ -230,6 +231,23 @@ class SubagentCascade(unittest.TestCase):
                 self.assertNotIn(NO_ROLE_MATCH, context)
                 named = [key for key in keys if f'"element-of-{key}"' in context]
                 self.assertEqual(named, [expected])
+
+
+class BrokenCascadeImport(unittest.TestCase):
+    def test_a_cascade_import_that_fails_unbinds_the_subagent_with_the_import_error(self):
+        with tempfile.TemporaryDirectory() as root:
+            shutil.copytree(HOOKS, os.path.join(root, "hooks"))
+            package = os.path.join(root, "unharness", "src", "unharness")
+            os.makedirs(package)
+            with open(os.path.join(PLUGIN_ROOT, "unharness", "src", "unharness", "config.py")) as f:
+                source = f.read()
+            with open(os.path.join(package, "config.py"), "w") as f:
+                f.write(source.replace("def subagent_key(", "def renamed_key("))
+            r = run_hook("subagent-start.sh", "subagents:\n  other:\n    - x\n", stdin=json.dumps({"agent_type": "worker"}),
+                         hooks=os.path.join(root, "hooks"))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("ImportError", r.stderr)
+        self.assertTrue(bound_line("subagent-start.sh", r.stdout).startswith("No manifesto bound: ImportError: cannot import name 'subagent_key'"))
 
 
 class DriftReminder(unittest.TestCase):

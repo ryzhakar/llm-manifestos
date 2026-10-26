@@ -66,8 +66,9 @@ if [ -z "${SUBAGENT_SECTION:-}" ] || [ "${SUBAGENT_SECTION}" = "{}" ]; then
     exit 0
 fi
 
-# Match agent_type against SUBAGENT_SECTION keys with the cascade of config.py
-MATCHED_ELEMENTS=$(python3 << 'PYEOF'
+MATCH_ERRORS=$(mktemp)
+MATCH_STATUS=0
+MATCHED_ELEMENTS=$(python3 << 'PYEOF' 2>"$MATCH_ERRORS"
 import json, os, sys
 
 sys.path.insert(0, os.path.dirname(os.environ["CONFIG_MODULE"]))
@@ -78,21 +79,25 @@ sub_raw = os.environ.get("SUBAGENT_SECTION", "{}")
 
 try:
     sub = json.loads(sub_raw)
-except:
+except ValueError:
     sub = {}
 
-if not sub or not isinstance(sub, dict):
-    sys.exit(1)
-
-key = subagent_key(agent_type, list(sub))
-if key is None:
-    sys.exit(1)
-
-print(json.dumps(sub[key]))
+key = subagent_key(agent_type, list(sub)) if sub and isinstance(sub, dict) else None
+print(json.dumps(None if key is None else sub[key]))
 PYEOF
-) || true
+) || MATCH_STATUS=$?
+if [ "$MATCH_STATUS" -ne 0 ]; then
+    cat "$MATCH_ERRORS" >&2
+    CONFIG_ERROR=$(tail -n1 "$MATCH_ERRORS")
+fi
+rm -f "$MATCH_ERRORS"
 
-if [ -z "$MATCHED_ELEMENTS" ]; then
+if [ -n "$CONFIG_ERROR" ]; then
+    unbound_line | emit_context SubagentStart
+    exit 0
+fi
+
+if [ "$MATCHED_ELEMENTS" = "null" ]; then
     ELEMENT_DESCRIPTION="No role-specific elements matched for this agent type. Your orchestrator provides bindings in the dispatch prompt."
     REBIND_NOTE=""
     export ELEMENT_DESCRIPTION MANIFESTO_DIR REBIND_NOTE
