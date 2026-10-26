@@ -116,10 +116,10 @@ def session_file_diff(file_name: str, text: str | None, documents: list[Document
     ))
 
 
-def session_file_problem(file_name: str, text: str | None, documents: list[Document]) -> str | None:
+def session_file_problem(file_name: str, text: str | None, documents: list[Document], fix_command: str = WRITING_SKILL) -> str | None:
     """Return why the session file would stop the prompt, None when it is current."""
     try:
-        _current_body(file_name, text, documents)
+        _current_body(file_name, text, documents, fix_command)
     except UnharnessError as error:
         return str(error)
     return None

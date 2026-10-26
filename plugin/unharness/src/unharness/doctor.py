@@ -13,6 +13,7 @@ from unharness.compile import (
     MINIFIED_FILES,
     STACK_BLOCK,
     SessionFiles,
+    agent_files,
     constitution_block,
     harness_block,
     session_file_problem,
@@ -113,12 +114,10 @@ def doctor(
         config = load(config_path)
     except UnharnessError as error:
         return [*layout, Finding(Status.FAIL, "config", str(error)), *host]
-    if not config.you:
-        return [*layout, Finding(Status.FAIL, "config", EMPTY_STACK_MESSAGE), *host]
     plugin = manifesto_plugin_dir(config.registry, login)
     outcomes = [_resolve_element(element, config, login) for element in config.you]
     documents = [document for _, document in outcomes]
-    stack = None if None in documents else documents
+    stack = None if not documents or None in documents else documents
     skills = [
         _skill_finding(element, config, login)
         for element, document in zip(config.you, documents)
@@ -135,8 +134,10 @@ def doctor(
         *layout,
         Finding(Status.OK, "config", str(config_path.resolve())),
         *[finding for finding, _ in outcomes],
+        _stack_finding("stack you", _elements_problem(outcomes, EMPTY_STACK_MESSAGE), len(outcomes)),
         *skills,
         *on_stack,
+        *_subagent_findings(config, login, modes),
         _preamble_finding(config.directory),
         *host,
         *size,
@@ -164,6 +165,42 @@ def _resolve_element(element: Element, config: Config, login: Path) -> tuple[Fin
     except UnharnessError as error:
         return Finding(Status.FAIL, name, str(error)), None
     return Finding(Status.OK, name, str(locate(element, config.directory, config.registry, login)[0])), document
+
+
+def _elements_problem(outcomes: list[tuple[Finding, Document | None]], empty_message: str) -> str | None:
+    """Return the empty message for no elements, else the first resolver message, None when every element resolved."""
+    if not outcomes:
+        return empty_message
+    return next((finding.detail for finding, document in outcomes if document is None), None)
+
+
+def _stack_finding(name: str, problem: str | None, count: int) -> Finding:
+    """Report a stack that resolved its elements, or fail with the problem."""
+    if problem:
+        return Finding(Status.FAIL, name, problem)
+    return Finding(Status.OK, name, f"{count} elements resolved")
+
+
+def _subagent_findings(config: Config, login: Path, modes: Modes) -> list[Finding]:
+    """Report each subagents key's stack in config order."""
+    return [_subagent_finding(key, elements, config, login, modes) for key, elements in config.subagents.items()]
+
+
+def _subagent_finding(key: str, elements: list[Element], config: Config, login: Path, modes: Modes) -> Finding:
+    """Report the first problem in the key's elements, its empty list, and its four files, else that all is current."""
+    name = f"stack subagents.{key}"
+    outcomes = [_resolve_element(element, config, login) for element in elements]
+    problem = _elements_problem(outcomes, f"subagents.{key} is empty")
+    if problem:
+        return Finding(Status.WARN, name, problem)
+    documents = [document for _, document in outcomes]
+    for pair in (FULL_FILES, MINIFIED_FILES):
+        files = agent_files(pair, key)
+        for path in files.paths:
+            problem = session_file_problem(path, read_if_present(config.directory / path), documents, files.fix_command)
+            if problem:
+                return Finding(Status.WARN, name, problem)
+    return Finding(Status.OK, name, f"{len(documents)} elements resolved; session files current")
 
 
 def _skill_finding(element: Element, config: Config, login: Path) -> Finding:

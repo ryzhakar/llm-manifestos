@@ -177,6 +177,14 @@ def test_each_element_reports_the_path_it_resolved_to(host, project, capsys):
     )
 
 
+def test_the_you_stack_reports_how_many_elements_resolved_right_after_the_element_lines(host, project, capsys):
+    _, lines = doctor(capsys, "--config", str(project))
+
+    names = [line.split(": ")[0] for line in lines]
+    assert names[2:5] == ["OK element dry", "OK element write-well", "OK stack you"]
+    assert finding(lines, "stack you") == "OK stack you: 2 elements resolved"
+
+
 def test_an_element_that_does_not_resolve_fails_with_the_resolvers_message(host, project, capsys):
     write(project, CONFIG + "  - name: kiss\n")
 
@@ -227,9 +235,10 @@ MINIFIED_PAIR = (".manifestos/interplay.min.md", ".manifestos/commitments.min.md
 WRITING_SKILL = "/compile-commitments"
 
 
-def write_session_files(project: Path, login: Path, names: tuple[str, ...], body: str = "Bound.\n") -> None:
+def write_session_files(project: Path, login: Path, names: tuple[str, ...], body: str = "Bound.\n", key: str | None = None) -> None:
     config = load(project)
-    block = stack_block(resolve_stack(config.you, config.directory, config.registry, login))
+    elements = config.you if key is None else config.subagents[key]
+    block = stack_block(resolve_stack(elements, config.directory, config.registry, login))
     for name in names:
         write(project.parent.parent / name, f"{block}\n\n{body}")
 
@@ -281,6 +290,76 @@ def test_a_stale_session_file_reports_the_changed_element(host, project, capsys)
     assert finding(lines, MINIFIED_PAIR[0]).startswith(f"WARN {MINIFIED_PAIR[0]}: {MINIFIED_PAIR[0]} is stale")
 
 
+AGENT_CONFIG = CONFIG + "subagents:\n  implementer:\n    - name: dry\n  other:\n    - name: dry\n    - name: write-well\n      source: skill agent-conduct:write-well\n"
+AGENT_PAIRS = {key: tuple(f".manifestos/agents/{key}/{name}" for name in ("interplay.md", "commitments.md", "interplay.min.md", "commitments.min.md")) for key in ("implementer", "other")}
+
+
+def write_agent_files(project: Path, login: Path, key: str, count: int = 4) -> None:
+    write_session_files(project, login, AGENT_PAIRS[key][:count], key=key)
+
+
+def test_a_subagents_key_with_current_session_files_is_ok_in_config_order_after_the_main_session_files(host, project, capsys):
+    write(project, AGENT_CONFIG)
+    write_session_files(project, host / "login", FULL_PAIR + MINIFIED_PAIR)
+    write_agent_files(project, host / "login", "implementer")
+    write_agent_files(project, host / "login", "other")
+
+    _, lines = doctor(capsys, "--config", str(project))
+
+    names = [line.split(": ")[0] for line in lines]
+    assert names[names.index("OK .manifestos/commitments.min.md") + 1:][:2] == ["OK stack subagents.implementer", "OK stack subagents.other"]
+    assert finding(lines, "stack subagents.implementer") == "OK stack subagents.implementer: 1 elements resolved; session files current"
+    assert finding(lines, "stack subagents.other") == "OK stack subagents.other: 2 elements resolved; session files current"
+
+
+def test_a_subagents_key_without_session_files_warns_with_the_path_and_the_keys_command(host, project, capsys):
+    write(project, AGENT_CONFIG)
+
+    status, lines = doctor(capsys, "--config", str(project))
+
+    first = AGENT_PAIRS["implementer"][0]
+    assert finding(lines, "stack subagents.implementer") == f"WARN stack subagents.implementer: {first} is missing; run {WRITING_SKILL} implementer"
+    assert finding(lines, "stack subagents.other").startswith("WARN stack subagents.other: ")
+    assert status == 1
+
+
+def test_a_stale_minified_agent_file_is_the_problem_when_the_full_pair_is_current(host, project, capsys):
+    write(project, AGENT_CONFIG)
+    write_agent_files(project, host / "login", "implementer", count=2)
+    write_agent_files(project, host / "login", "other")
+    write(project.parent.parent / AGENT_PAIRS["implementer"][2], "no block\n")
+
+    _, lines = doctor(capsys, "--config", str(project))
+
+    minified = AGENT_PAIRS["implementer"][2]
+    assert finding(lines, "stack subagents.implementer") == f"WARN stack subagents.implementer: {minified} has no <stack> block; run {WRITING_SKILL} implementer"
+
+
+def test_an_unresolvable_element_under_a_key_warns_with_the_resolvers_message(host, project, capsys):
+    write(project, CONFIG + "subagents:\n  implementer:\n    - name: kiss\n")
+
+    _, lines = doctor(capsys, "--config", str(project))
+
+    expected = host / "login" / CACHE / "manifesto" / MANIFESTO_PLUGIN_VERSION / "manifestos" / "kiss.md"
+    assert finding(lines, "stack subagents.implementer") == f"WARN stack subagents.implementer: element kiss did not resolve; tried {expected}"
+
+
+def test_an_empty_subagents_list_warns_as_prompt_would_refuse_it(host, project, capsys):
+    write(project, CONFIG + "subagents:\n  implementer:\n")
+
+    _, lines = doctor(capsys, "--config", str(project))
+
+    assert finding(lines, "stack subagents.implementer") == "WARN stack subagents.implementer: subagents.implementer is empty"
+
+
+def test_a_failing_you_element_does_not_hide_the_subagents_lines(host, project, capsys):
+    write(project, CONFIG + "  - name: kiss\nsubagents:\n  implementer:\n    - name: dry\n")
+
+    _, lines = doctor(capsys, "--config", str(project))
+
+    assert finding(lines, "stack subagents.implementer").startswith("WARN stack subagents.implementer: ")
+
+
 needs_digests = pytest.mark.skipif(importlib.util.find_spec("unharness.digests") is None, reason="C1 has not landed unharness.digests")
 DIGESTED_CONFIG = "you:\n  - name: dry\n    purpose: one home\n  - name: kiss\n  - name: write-well\n    source: skill agent-conduct:write-well\n"
 LONG_BODY = " ".join(f"word{number}" for number in range(40))
@@ -326,7 +405,7 @@ def test_a_healthy_project_gives_one_ok_line_per_check_and_exits_0(host, healthy
 
     assert status == 0
     assert [line.split(": ")[0] for line in lines] == [
-        "OK layout", "OK config", "OK element dry", "OK element kiss", "OK element write-well", "OK skill agent-conduct:write-well",
+        "OK layout", "OK config", "OK element dry", "OK element kiss", "OK element write-well", "OK stack you", "OK skill agent-conduct:write-well",
         "OK digest dry", "OK digest kiss", "OK digest dry+kiss", "OK cover",
         *(f"OK {name}" for name in FULL_PAIR + MINIFIED_PAIR),
         "OK preamble", "OK claude", "OK switch registry", *(f"OK {name}" for name in SWITCH_NAMES), "OK uv", "OK manifesto plugin",
@@ -478,13 +557,22 @@ def test_a_shortest_mode_that_cannot_compile_warns_in_the_size_line_with_its_mes
 
 
 
-def test_an_empty_stack_fails_the_config_line_as_prompt_would(host, project, capsys):
+def test_an_empty_stack_fails_the_you_stack_line_as_prompt_would(host, project, capsys):
     write(project, "you:\n")
 
     status, lines = doctor(capsys, "--config", str(project))
 
-    assert finding(lines, "config") == "FAIL config: the stack is empty"
+    assert finding(lines, "stack you") == "FAIL stack you: the stack is empty"
     assert status == 1
+
+
+def test_an_element_that_does_not_resolve_fails_the_you_stack_line_with_its_message(host, project, capsys):
+    write(project, CONFIG + "  - name: kiss\n")
+
+    _, lines = doctor(capsys, "--config", str(project))
+
+    expected = host / "login" / CACHE / "manifesto" / MANIFESTO_PLUGIN_VERSION / "manifestos" / "kiss.md"
+    assert finding(lines, "stack you") == f"FAIL stack you: element kiss did not resolve; tried {expected}"
 
 
 def test_an_element_that_does_not_resolve_leaves_out_the_checks_that_need_the_stack(host, project, capsys):
@@ -493,7 +581,7 @@ def test_an_element_that_does_not_resolve_leaves_out_the_checks_that_need_the_st
     _, lines = doctor(capsys, "--config", str(project))
 
     names = [line.split(": ")[0].split(" ", 1)[1] for line in lines]
-    assert names == ["layout", "config", "element dry", "element write-well", "element kiss", "skill agent-conduct:write-well", "preamble", "claude", "switch registry", *SWITCH_NAMES, "uv", "manifesto plugin"]
+    assert names == ["layout", "config", "element dry", "element write-well", "element kiss", "stack you", "skill agent-conduct:write-well", "preamble", "claude", "switch registry", *SWITCH_NAMES, "uv", "manifesto plugin"]
 
 
 @needs_digests
