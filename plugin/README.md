@@ -81,6 +81,8 @@ The launcher's input is reopened on the terminal, so the session reads the keybo
 - `unharness switches` prints the strip table below, generated from the switch registry.
 - `unharness launch [--keep-claude-md] [--keep-web-search] [--no-hooks] [--claude-version X.Y.Z] [PROMPT] [-- LAUNCHER [ARGS...]]` caches the prompt in `$XDG_CACHE_HOME/unharness/<sha256>.md`, or `~/.cache/unharness/` when unset, and runs the launcher with the switches below. The printed command ends in the terminal's own device, and in `/dev/tty` only when neither output is a terminal.
 
+If ARGS hold one `--settings VALUE` or `--settings=VALUE`, `launch` merges it with its own: VALUE is JSON text when its first non-space character is `{`, else a file path relative to the working folder. The result passes as the one `--settings`, the owner's keys first in their order, then each strip key the owner did not set. The merge is shallow, so a key the owner sets replaces the strip's whole value, and `unharness: your --settings sets <key>; the strip's value is left out` goes on stderr for each. Two `--settings` stop with `pass --settings once after --`. A launcher that adds `--settings` inside itself stays unseen.
+
 `/compile-commitments` reads `unharness stack`, reduces each element to its axioms, and writes the interplay and commitments files and their min pair.
 Run it once after each change to the stack; `unharness prompt` stops until the full pair matches, and under `--minified` until the min pair matches.
 
