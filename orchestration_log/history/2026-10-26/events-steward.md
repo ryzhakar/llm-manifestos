@@ -19,3 +19,6 @@
 2026-10-26T19:22+0200 | agent:s3-spec | receipt | spec part 4.0.0 appended (121 lines, 11 decisions); unverified until units build against it
 2026-10-26T19:22+0200 | self | decision | spec decisions 1-11 accepted as queue 66; queue 65 carried in the U1 brief directly; wake f7c58373 deleted
 2026-10-26T19:22+0200 | self | delegation | worktrees core (feat/4.0.0-core) and settings (feat/4.0.0-settings) from 355e6c2; u1-core and u2-settings (sonnet implementers, background) launched from history/2026-10-26/prompts/u1-core.md, u2-settings.md
+2026-10-26T19:22+0200 | agent:s3-spec | receipt | queue 64-65 folded into spec part 4.0.0 (128 lines; Block scalars section; doctor stack lines; decision 12: only a bare indicator is rejected); u1-core told to re-read the Block scalars section
+2026-10-26T19:24+0200 | peer:gym/trainer-u3 | receipt | [notice] parser defect: a rejected config makes hooks bind nothing unseen; asks: hooks inject a one-line notice, block scalars or a check command, ship the check script
+2026-10-26T19:24+0200 | self | decision | queue 67 (hooks print one stdout line on config errors, superseding 22) and 68 (doctor is the one check command, no script) written; s3-spec asked to fold 67 into the spec
