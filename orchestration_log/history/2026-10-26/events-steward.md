@@ -36,3 +36,5 @@
 2026-10-26T19:37+0200 | agent:u4-doctor | receipt | U4 done, report u4-report.md; two edits outside scope (fix_command on session_file_problem, shared no_subagent_key_message)
 2026-10-26T19:37+0200 | self | decision | U4 rebased onto core and fast-forwarded (core c03d2dd): 385 package tests, hook suite OK; doctor worktree removed
 2026-10-26T19:37+0200 | self | delegation | d1-spec and d1-quality (opus, background, read-only) launched on core c03d2dd from prompts/d1-review.md; reports recon/2026-10-26/d1-spec.md, d1-quality.md
+2026-10-26T19:38+0200 | self | delegation | wake 485bea3b (20:07) replaces 6226d38c, covering u5-docs, d1-spec, d1-quality
+2026-10-26T19:38+0200 | agent:d1-quality | receipt | dispatch refused as malformed (no head sha, no spec verdict path, no gates); answered with 0972592..c03d2dd, both suites, d1-spec.md; it starts after d1-spec lands
