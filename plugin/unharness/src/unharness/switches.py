@@ -12,8 +12,10 @@ from unharness.resolve import version_key
 
 REGISTRY_FILE = "switches.json"
 KINDS = ("env", "flag", "settings")
-OPTIONS = ("--keep-claude-md", "--keep-web-search", "--no-hooks")
+VALUED_OPTION = "--autocompact"
+OPTIONS = ("--keep-claude-md", "--keep-web-search", "--no-hooks", VALUED_OPTION)
 KEYS = ("name", "kind", "value", "removes", "documented", "control", "verified", "default", "option")
+GIVEN_KEY = "given"
 BOOLEAN_KEYS = ("documented", "control", "default")
 SHARED_ROW_KEYS = ("control", "default", "option")
 VERSION_PATTERN = re.compile(r"\d+\.\d+\.\d+")
@@ -34,6 +36,7 @@ class Switch:
     verified: tuple[str, ...]
     default: bool
     option: str | None
+    given: Any = None
 
 
 def shipped_switches() -> list[Switch]:
@@ -104,10 +107,12 @@ def _switch(index: int, entry: Any) -> Switch:
         if key not in entry:
             raise _refusal(index, f"{key} is missing")
     for key in entry:
-        if key not in KEYS:
+        if key not in (*KEYS, GIVEN_KEY):
             raise _refusal(index, f"{key} is not a key of an entry")
     if entry["kind"] not in KINDS:
         raise _refusal(index, 'kind must be "env", "flag", or "settings"')
+    option = _option(index, entry["option"])
+    _refuse_misplaced_given(index, entry, option)
     return Switch(
         name=_text(index, entry, "name"),
         kind=entry["kind"],
@@ -117,7 +122,8 @@ def _switch(index: int, entry: Any) -> Switch:
         control=_boolean(index, entry, "control"),
         verified=_versions(index, entry["verified"]),
         default=_boolean(index, entry, "default"),
-        option=_option(index, entry["option"]),
+        option=option,
+        given=entry.get(GIVEN_KEY),
     )
 
 
@@ -167,8 +173,21 @@ def _value(index: int, entry: dict) -> Any:
 
 def _option(index: int, option: Any) -> str | None:
     if option is not None and option not in OPTIONS:
-        raise _refusal(index, 'option must be null, "--keep-claude-md", "--keep-web-search", or "--no-hooks"')
+        quoted = [f'"{name}"' for name in OPTIONS]
+        raise _refusal(index, f"option must be null, {', '.join(quoted[:-1])}, or {quoted[-1]}")
     return option
+
+
+def _refuse_misplaced_given(index: int, entry: dict, option: str | None) -> None:
+    """Refuse given outside an entry of the valued option, and an entry of that option lacking given or pairing value and default wrongly."""
+    if option != VALUED_OPTION:
+        if GIVEN_KEY in entry:
+            raise _refusal(index, f"given belongs only to an entry whose option is {VALUED_OPTION}")
+        return
+    if GIVEN_KEY not in entry:
+        raise _refusal(index, "given is missing")
+    if (entry["value"] is None) == entry["default"]:
+        raise _refusal(index, "value must be null exactly when default is false")
 
 
 def _versions(index: int, versions: Any) -> tuple[str, ...]:

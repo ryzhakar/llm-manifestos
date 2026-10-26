@@ -79,7 +79,11 @@ def test_a_valid_text_loads_each_kind_with_its_value():
     ([entry(documented="yes")], "switches.json entry 0: documented must be true or false"),
     ([entry(control=1)], "switches.json entry 0: control must be true or false"),
     ([entry(default=None)], "switches.json entry 0: default must be true or false"),
-    ([entry(option="--other")], 'switches.json entry 0: option must be null, "--keep-claude-md", "--keep-web-search", or "--no-hooks"'),
+    ([entry(option="--other")], 'switches.json entry 0: option must be null, "--keep-claude-md", "--keep-web-search", "--no-hooks", or "--autocompact"'),
+    ([entry(kind="settings", value=False, option="--autocompact")], "switches.json entry 0: given is missing"),
+    ([entry(given=True)], "switches.json entry 0: given belongs only to an entry whose option is --autocompact"),
+    ([entry(kind="settings", value=None, given=True, option="--autocompact")], "switches.json entry 0: value must be null exactly when default is false"),
+    ([entry(kind="settings", value=False, given=True, default=False, option="--autocompact")], "switches.json entry 0: value must be null exactly when default is false"),
     ([entry(verified=[])], "switches.json entry 0: verified must be a non-empty array of distinct X.Y.Z strings in ascending order"),
     ([entry(verified="2.1.309")], "switches.json entry 0: verified must be a non-empty array of distinct X.Y.Z strings in ascending order"),
     ([entry(verified=["2.1"])], "switches.json entry 0: verified must be a non-empty array of distinct X.Y.Z strings in ascending order"),
@@ -97,6 +101,15 @@ def test_a_file_that_breaks_the_schema_is_refused_with_the_entry_index_and_the_p
         parse_switches(json.dumps(entries))
 
     assert str(refusal.value) == message
+
+
+def test_an_autocompact_entry_loads_with_the_value_it_passes_when_the_option_is_given():
+    switches = parse_switches(text_of(
+        entry(name="on", kind="settings", value=False, given=True, option="--autocompact"),
+        entry(name="window", kind="settings", value=None, given="<size>", removes="Other", default=False, option="--autocompact"),
+    ))
+
+    assert [(switch.value, switch.given) for switch in switches] == [(False, True), (None, "<size>")]
 
 
 def test_two_entries_of_different_kinds_may_share_a_name():
