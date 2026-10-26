@@ -1,5 +1,6 @@
 """Compile resolved documents and the session's own files into the system prompt."""
 
+import difflib
 import re
 from pathlib import PurePosixPath
 from collections.abc import Sequence
@@ -19,6 +20,7 @@ STACK_BLOCK = re.compile(r"\A<stack>\n(.*?)\n</stack>\n*", re.S)
 DOUBLE_QUOTE = '"'
 SINGLE_QUOTE = "'"
 WRITING_SKILL = "/compile-commitments"
+CURRENT_LABEL = "current"
 
 
 @dataclass(frozen=True)
@@ -27,6 +29,11 @@ class SessionFiles:
     commitments: str
     fix_command: str = WRITING_SKILL
 
+    @property
+    def paths(self) -> tuple[str, str]:
+        """The two session file paths, interplay first."""
+        return self.interplay, self.commitments
+
 
 FULL_FILES = SessionFiles(INTERPLAY_PATH, COMMITMENTS_PATH)
 MINIFIED_FILES = SessionFiles(MINIFIED_INTERPLAY_PATH, MINIFIED_COMMITMENTS_PATH)
@@ -34,7 +41,7 @@ MINIFIED_FILES = SessionFiles(MINIFIED_INTERPLAY_PATH, MINIFIED_COMMITMENTS_PATH
 
 def agent_files(files: SessionFiles, key: str) -> SessionFiles:
     """Return the pair of session files the subagents key has beside the main pair, with the command that rewrites them."""
-    return SessionFiles(*(f"{AGENTS_PATH}/{key}/{PurePosixPath(name).name}" for name in (files.interplay, files.commitments)), f"{WRITING_SKILL} {key}")
+    return SessionFiles(*(f"{AGENTS_PATH}/{key}/{PurePosixPath(name).name}" for name in files.paths), f"{WRITING_SKILL} {key}")
 
 
 def compile_prompt(
@@ -95,6 +102,18 @@ def _current_body(file_name: str, text: str | None, documents: list[Document], f
 def _difference(recorded_lines: list[str], current_lines: list[str]) -> str:
     changed = sorted({line.split(" ")[0] for line in set(recorded_lines) ^ set(current_lines)})
     return f"changed: {', '.join(changed)}" if changed else "reordered"
+
+
+def session_file_diff(file_name: str, text: str | None, documents: list[Document]) -> list[str]:
+    """Return the lines showing how the session file's recorded stack differs from the documents', none when it is current."""
+    if text is None:
+        return [f"{file_name}: missing"]
+    recorded = STACK_BLOCK.match(text)
+    if not recorded:
+        return [f"{file_name}: no <stack> block"]
+    return list(difflib.unified_diff(
+        recorded.group(1).split("\n"), _stack_lines(documents), fromfile=file_name, tofile=CURRENT_LABEL, lineterm="", n=0,
+    ))
 
 
 def session_file_problem(file_name: str, text: str | None, documents: list[Document]) -> str | None:

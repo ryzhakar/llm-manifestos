@@ -5,7 +5,7 @@ import os
 import sys
 from pathlib import Path
 
-from unharness.compile import FULL_FILES, MINIFIED_FILES, SessionFiles, agent_files, compile_prompt, stack_view
+from unharness.compile import FULL_FILES, MINIFIED_FILES, SessionFiles, agent_files, compile_prompt, session_file_diff, stack_view
 from unharness.config import CONFIG_PATH, EMPTY_STACK_MESSAGE, Config, Element, UnharnessError, fail, falls_through_to_default, load, subagent_key
 from unharness.digests import DIGESTS_FLAG, OVERLAP_FLAG, STACK_DIGESTS_FLAG, constitution_blocks, digest_mode, stamp_digest
 from unharness.doctor import Modes, claude_version, doctor, has_failed
@@ -23,6 +23,7 @@ SWITCHES_VERB = "switches"
 CLAUDE_VERSION_FLAG = "--claude-version"
 MINIFIED_FLAG = "--minified"
 AGENT_FLAG = "--agent"
+DIFF_FLAG = "--diff"
 MODE_FLAGS = (DIGESTS_FLAG, STACK_DIGESTS_FLAG, OVERLAP_FLAG, MINIFIED_FLAG)
 LAUNCHER_SEPARATOR = "--"
 
@@ -51,6 +52,7 @@ def _run(argv: list[str]) -> int:
     prompt_parser = verbs.add_parser(PROMPT_VERB)
     stack_parser = verbs.add_parser(STACK_VERB)
     stack_parser.add_argument("slugs", nargs="*")
+    stack_parser.add_argument(DIFF_FLAG, action="store_true")
     for parser_of_verb in (prompt_parser, stack_parser):
         parser_of_verb.add_argument("--config", type=Path, default=CONFIG_PATH)
         parser_of_verb.add_argument(AGENT_FLAG)
@@ -80,6 +82,8 @@ def _run(argv: list[str]) -> int:
             print(strip_table(shipped_switches()))
             return 0
         login = login_dir(os.environ, Path.home())
+        if arguments.verb == STACK_VERB and arguments.diff:
+            return _diff(arguments, login)
         print(_stamp(arguments, login) if arguments.verb == STAMP_VERB else _output(arguments, login))
     except UnharnessError as error:
         return fail(error)
@@ -114,6 +118,19 @@ def _doctor(arguments: argparse.Namespace) -> int:
     return 1 if has_failed(findings) else 0
 
 
+def _diff(arguments: argparse.Namespace, login: Path) -> int:
+    if arguments.slugs:
+        raise UnharnessError(f"{DIFF_FLAG} takes no slugs")
+    config = load(arguments.config)
+    elements, key = _elements_to_bind(config, arguments.agent)
+    documents = resolve_stack(elements, config.directory, config.registry, login)
+    names = [name for minified in (False, True) for name in _session_files(key, minified).paths]
+    differences = [line for name in names for line in session_file_diff(name, read_if_present(config.directory / name), documents)]
+    if differences:
+        print("\n".join(differences))
+    return 1 if differences else 0
+
+
 def _output(arguments: argparse.Namespace, login: Path) -> str:
     verb = arguments.verb
     mode = digest_mode(arguments.digests, arguments.stack_digests, arguments.overlap) if verb == PROMPT_VERB else None
@@ -122,10 +139,11 @@ def _output(arguments: argparse.Namespace, login: Path) -> str:
         if arguments.agent is not None:
             raise UnharnessError(f"{AGENT_FLAG} takes no slugs")
         return stack_view(resolve_stack(manifesto_elements(arguments.slugs), config.directory, config.registry, login))
-    elements, session_files = _stack_to_bind(config, arguments.agent, verb == PROMPT_VERB and arguments.minified)
+    elements, key = _elements_to_bind(config, arguments.agent)
     documents = resolve_stack(elements, config.directory, config.registry, login)
     if verb == STACK_VERB:
         return stack_view(documents)
+    session_files = _session_files(key, arguments.minified)
     return compile_prompt(
         documents,
         load_preamble(config.directory).text,
@@ -136,13 +154,12 @@ def _output(arguments: argparse.Namespace, login: Path) -> str:
     )
 
 
-def _stack_to_bind(config: Config, agent_type: str | None, minified: bool) -> tuple[list[Element], SessionFiles]:
-    """Return the elements to bind and the session files that go with them, the matched subagents key's when agent_type is given."""
-    main_files = MINIFIED_FILES if minified else FULL_FILES
+def _elements_to_bind(config: Config, agent_type: str | None) -> tuple[list[Element], str | None]:
+    """Return the elements to bind and the subagents key they came from, None for the main stack."""
     if agent_type is None:
         if not config.you:
             raise UnharnessError(EMPTY_STACK_MESSAGE)
-        return config.you, main_files
+        return config.you, None
     keys = list(config.subagents)
     key = subagent_key(agent_type, keys)
     if key is None:
@@ -151,7 +168,13 @@ def _stack_to_bind(config: Config, agent_type: str | None, minified: bool) -> tu
         print(f"unharness: {agent_type} matches no subagents key; using other:, the default stack", file=sys.stderr)
     if not config.subagents[key]:
         raise UnharnessError(f"subagents.{key} is empty")
-    return config.subagents[key], agent_files(main_files, key)
+    return config.subagents[key], key
+
+
+def _session_files(key: str | None, minified: bool) -> SessionFiles:
+    """Return the session files of the main stack, or of the subagents key, in the full or the minified pair."""
+    pair = MINIFIED_FILES if minified else FULL_FILES
+    return pair if key is None else agent_files(pair, key)
 
 
 if __name__ == "__main__":
