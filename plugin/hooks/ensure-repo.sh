@@ -1,5 +1,5 @@
 #!/bin/bash
-# Shared helper: read .manifestos.yaml through the unharness config module, locate the bundled manifestos.
+# Shared helper: read .manifestos/config.yaml through the unharness config module, locate the bundled manifestos.
 # Source this file from hook scripts after setting SCRIPT_DIR. Sourcing assigns
 # only the three variables below: DEFAULT_MANIFESTO_DIR, CONFIG_MODULE, MISSING_CONFIG_STATUS.
 
@@ -33,7 +33,7 @@ detect_manifestos() {
     local project_dir="${CLAUDE_PROJECT_DIR:-.}"
     local config errors out status=0
     errors=$(mktemp)
-    config=$(python3 "$CONFIG_MODULE" "$project_dir/.manifestos.yaml" --json 2>"$errors") || status=$?
+    config=$(python3 "$CONFIG_MODULE" --json --project "$project_dir" 2>"$errors") || status=$?
     if [ "$status" -ne 0 ] && [ "$status" -ne "$MISSING_CONFIG_STATUS" ]; then
         cat "$errors" >&2
     fi

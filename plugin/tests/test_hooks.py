@@ -23,7 +23,8 @@ def run_hook(script, config, stdin="", plugin_root=PLUGIN_ROOT, **extra_env):
     """Run one hook in a fresh project folder, with no config file when config is None; the folder's path rides on the result as `project`."""
     with tempfile.TemporaryDirectory() as project:
         if config is not None:
-            with open(os.path.join(project, ".manifestos.yaml"), "w") as f:
+            os.mkdir(os.path.join(project, ".manifestos"))
+            with open(os.path.join(project, ".manifestos", "config.yaml"), "w") as f:
                 f.write(config)
         env = {k: v for k, v in os.environ.items() if k != "UNHARNESS"}
         env.update(CLAUDE_PLUGIN_ROOT=plugin_root, CLAUDE_PROJECT_DIR=project, **extra_env)
