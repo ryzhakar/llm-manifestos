@@ -67,3 +67,6 @@
 2026-10-26T20:39+0200 | self | decision | core fast-forwarded to d8be461; checked 406, hook OK; fix4 removed; d1-quality continued (d4-quality.md)
 2026-10-26T20:40+0200 | agent:d1-quality | receipt | d4-quality.md: ready to merge, 0/0/0 at d8be461
 2026-10-26T20:40+0200 | self | delegation | r1-release (sonnet) launched from prompts/r1-release.md: linearize, version 4.0.0, e2e checks, ff session/long-run, push main, tags v4.0.0 + pypi-4.0.0, publish run
+2026-10-26T20:43+0200 | agent:r1-release | receipt | stopped before ship: c4e0892 version commit on 361009b; check 3 (prompt --agent no-such-agent) exit 1 on uncompiled other; check 8 hung (no prompt given, so launch read the terminal)
+2026-10-26T20:43+0200 | self | discovery | both failures are my brief's errors: check 3 is the specified refusal; check 8 rerun with a prompt file prints the command, and with echo as launcher passes one --settings holding the owner key first then the strip keys
+2026-10-26T20:43+0200 | self | decision | queue 70; r1-release told to ship
