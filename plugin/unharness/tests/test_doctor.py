@@ -54,10 +54,11 @@ def test_a_missing_config_fails_and_leaves_only_the_three_checks_that_need_no_co
 
     assert status == 1
     assert [line.split(":")[0] for line in lines] == [
-        "FAIL config", "OK claude", "OK switch registry", *(f"OK {name}" for name in SWITCH_NAMES), "OK uv", "OK manifesto plugin",
+        "OK layout", "FAIL config", "OK claude", "OK switch registry", *(f"OK {name}" for name in SWITCH_NAMES), "OK uv", "OK manifesto plugin",
     ]
-    assert lines[0].startswith(f"FAIL config: no config: tried {host / 'project' / '.manifestos/config.yaml'}")
-    assert lines[1] == f"OK claude: {host / 'bin' / 'claude'} {TESTED_CLAUDE}"
+    assert lines[0] == f"OK layout: {host / 'project' / '.manifestos'}"
+    assert lines[1].startswith(f"FAIL config: no config: tried {host / 'project' / '.manifestos/config.yaml'}")
+    assert lines[2] == f"OK claude: {host / 'bin' / 'claude'} {TESTED_CLAUDE}"
     assert lines[-2] == f"OK uv: {host / 'bin' / 'uv'} {host / 'bin' / 'uvx'}"
     assert lines[-1] == "OK manifesto plugin: 3.6.0"
 
@@ -69,6 +70,24 @@ def missing_config(host) -> list[str]:
 
 def finding(lines: list[str], name: str) -> str:
     return next(line for line in lines if line.startswith(f"{name}: ", line.index(" ") + 1))
+
+
+def test_an_old_layout_fails_one_line_per_move_and_leaves_out_the_config_checks(host, capsys):
+    project = host / "project"
+    write(project / ".manifestos.yaml", CONFIG)
+    write(project / ".manifestos.preamble.md", "Mine.\n")
+
+    status, lines = doctor(capsys, "--config", str(project / ".manifestos/config.yaml"))
+
+    assert status == 1
+    assert lines[:3] == [
+        "FAIL layout: mkdir -p .manifestos",
+        "FAIL layout: mv .manifestos.yaml .manifestos/config.yaml",
+        "FAIL layout: mv .manifestos.preamble.md .manifestos/preamble.md",
+    ]
+    assert [line.split(":")[0] for line in lines[3:]] == [
+        "OK claude", "OK switch registry", *(f"OK {name}" for name in SWITCH_NAMES), "OK uv", "OK manifesto plugin",
+    ]
 
 
 @pytest.mark.parametrize(("version", "chosen"), [("2.1.308", "2.1.309"), ("2.1.312", "2.1.309"), ("2.2.0", "2.1.309")])
@@ -307,7 +326,7 @@ def test_a_healthy_project_gives_one_ok_line_per_check_and_exits_0(host, healthy
 
     assert status == 0
     assert [line.split(": ")[0] for line in lines] == [
-        "OK config", "OK element dry", "OK element kiss", "OK element write-well", "OK skill agent-conduct:write-well",
+        "OK layout", "OK config", "OK element dry", "OK element kiss", "OK element write-well", "OK skill agent-conduct:write-well",
         "OK digest dry", "OK digest kiss", "OK digest dry+kiss", "OK cover",
         *(f"OK {name}" for name in FULL_PAIR + MINIFIED_PAIR),
         "OK preamble", "OK claude", "OK switch registry", *(f"OK {name}" for name in SWITCH_NAMES), "OK uv", "OK manifesto plugin",
@@ -474,7 +493,7 @@ def test_an_element_that_does_not_resolve_leaves_out_the_checks_that_need_the_st
     _, lines = doctor(capsys, "--config", str(project))
 
     names = [line.split(": ")[0].split(" ", 1)[1] for line in lines]
-    assert names == ["config", "element dry", "element write-well", "element kiss", "skill agent-conduct:write-well", "preamble", "claude", "switch registry", *SWITCH_NAMES, "uv", "manifesto plugin"]
+    assert names == ["layout", "config", "element dry", "element write-well", "element kiss", "skill agent-conduct:write-well", "preamble", "claude", "switch registry", *SWITCH_NAMES, "uv", "manifesto plugin"]
 
 
 @needs_digests
@@ -585,7 +604,7 @@ def test_the_config_line_prints_the_absolute_path_of_a_relative_config(host, pro
 
     _, lines = doctor(capsys, "--config", project.name)
 
-    assert lines[0] == f"OK config: {project.resolve()}"
+    assert lines[1] == f"OK config: {project.resolve()}"
 
 
 def test_a_stack_of_skills_alone_reports_a_cover_of_none(host, project, capsys):

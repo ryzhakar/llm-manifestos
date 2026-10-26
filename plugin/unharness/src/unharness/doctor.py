@@ -17,7 +17,17 @@ from unharness.compile import (
     harness_block,
     session_file_problem,
 )
-from unharness.config import EMPTY_STACK_MESSAGE, SKILL_SOURCE, TEXT_ENCODING, Config, Element, UnharnessError, load
+from unharness.config import (
+    EMPTY_STACK_MESSAGE,
+    PROJECT_FOLDER,
+    SKILL_SOURCE,
+    TEXT_ENCODING,
+    Config,
+    Element,
+    UnharnessError,
+    load,
+    old_layout,
+)
 from unharness.digests import (
     Digest,
     DigestMode,
@@ -96,12 +106,15 @@ def doctor(
         _uv_finding(environ),
         _manifesto_plugin_finding(login),
     ]
+    layout = _layout_findings(config_path.absolute().parent.parent)
+    if has_failed(layout):
+        return [*layout, *host]
     try:
         config = load(config_path)
     except UnharnessError as error:
-        return [Finding(Status.FAIL, "config", str(error)), *host]
+        return [*layout, Finding(Status.FAIL, "config", str(error)), *host]
     if not config.you:
-        return [Finding(Status.FAIL, "config", EMPTY_STACK_MESSAGE), *host]
+        return [*layout, Finding(Status.FAIL, "config", EMPTY_STACK_MESSAGE), *host]
     plugin = manifesto_plugin_dir(config.registry, login)
     outcomes = [_resolve_element(element, config, login) for element in config.you]
     documents = [document for _, document in outcomes]
@@ -119,6 +132,7 @@ def doctor(
     ]
     size = [] if stack is None else [_prompt_size_finding(config.you, stack, config.directory, plugin)]
     return [
+        *layout,
         Finding(Status.OK, "config", str(config_path.resolve())),
         *[finding for finding, _ in outcomes],
         *skills,
@@ -132,6 +146,14 @@ def doctor(
 def has_failed(findings: list[Finding]) -> bool:
     """Say whether any finding is a FAIL."""
     return any(finding.status is Status.FAIL for finding in findings)
+
+
+def _layout_findings(project: Path) -> list[Finding]:
+    """Report the project folder's layout: one FAIL per command that moves an old path, else one OK."""
+    commands = old_layout(project)
+    if not commands:
+        return [Finding(Status.OK, "layout", str(project / PROJECT_FOLDER))]
+    return [Finding(Status.FAIL, "layout", command) for command in commands]
 
 
 def _resolve_element(element: Element, config: Config, login: Path) -> tuple[Finding, Document | None]:
