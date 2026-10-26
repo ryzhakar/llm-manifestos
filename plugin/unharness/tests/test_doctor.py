@@ -455,6 +455,17 @@ def test_the_you_stack_only_warns_when_agent_names_another_stack(host, project, 
     assert finding(lines, "stack you").startswith("WARN stack you: element kiss did not resolve")
 
 
+def test_the_main_stacks_session_files_only_warn_when_agent_names_another_stack(host, project, capsys):
+    write(project, AGENT_CONFIG)
+    write_agent_files(project, host / "login", "implementer")
+    write_agent_files(project, host / "login", "other")
+
+    status, lines = doctor(capsys, "--config", str(project), "--agent", "implementer")
+
+    assert [finding(lines, name).split(":")[0] for name in FULL_PAIR + MINIFIED_PAIR] == [f"WARN {name}" for name in FULL_PAIR + MINIFIED_PAIR]
+    assert status == 0
+
+
 needs_digests = pytest.mark.skipif(importlib.util.find_spec("unharness.digests") is None, reason="C1 has not landed unharness.digests")
 DIGESTED_CONFIG = "you:\n  - name: dry\n    purpose: one home\n  - name: kiss\n  - name: write-well\n    source: skill agent-conduct:write-well\n"
 LONG_BODY = " ".join(f"word{number}" for number in range(40))

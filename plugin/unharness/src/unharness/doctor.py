@@ -129,17 +129,18 @@ def doctor(
         if document and _is_plugin_skill(element)
     ]
     mode, flag_error = _flagged_mode(modes)
+    loads_you = modes.agent is None
     on_stack = [] if stack is None else [
-        *_digest_findings(config.you, stack, config.directory, plugin, mode),
-        _cover_finding(config.you, stack, config.directory, plugin, mode, flag_error),
-        *_session_findings(stack, config.directory, modes),
+        *_digest_findings(config.you, stack, config.directory, plugin, mode, loads_you),
+        _cover_finding(config.you, stack, config.directory, plugin, mode, flag_error, loads_you),
+        *_session_findings(stack, config.directory, modes, loads_you),
     ]
     size = [] if stack is None else [_prompt_size_finding(config.you, stack, config.directory, plugin)]
     return [
         *layout,
         Finding(Status.OK, "config", str(config_path.resolve())),
         *[finding for finding, _ in outcomes],
-        _stack_finding("stack you", _elements_problem(outcomes, EMPTY_STACK_MESSAGE), len(outcomes), loaded=modes.agent is None),
+        _stack_finding("stack you", _elements_problem(outcomes, EMPTY_STACK_MESSAGE), len(outcomes), loaded=loads_you),
         *skills,
         *on_stack,
         *_agent_match_findings(modes.agent, list(config.subagents)),
@@ -235,14 +236,14 @@ def _skill_finding(element: Element, config: Config, login: Path) -> Finding:
 
 
 def _digest_findings(
-    elements: list[Element], documents: list[Document], directory: Path, plugin: Path, mode: DigestMode | None,
+    elements: list[Element], documents: list[Document], directory: Path, plugin: Path, mode: DigestMode | None, loads_you: bool,
 ) -> list[Finding]:
     """Check each manifesto's single digest, then each candidate stack digest; a problem fails where the flags load the digest."""
     slugs = _manifesto_slugs(elements)
     hashes = stack_hashes(elements, documents)
-    singles = [_single_finding(slug, directory, plugin, hashes, mode) for slug in slugs]
+    singles = [_single_finding(slug, directory, plugin, hashes, mode, loads_you) for slug in slugs]
     stacks = [
-        _usable_finding(located, hashes, loaded=mode is not None and mode.stacks)
+        _usable_finding(located, hashes, loaded=loads_you and mode is not None and mode.stacks)
         for located in locate_stacks(slugs, directory, plugin)
     ]
     return [*singles, *stacks]
@@ -250,7 +251,7 @@ def _digest_findings(
 
 def _cover_finding(
     elements: list[Element], documents: list[Document], directory: Path, plugin: Path,
-    mode: DigestMode | None, flag_error: UnharnessError | None,
+    mode: DigestMode | None, flag_error: UnharnessError | None, loads_you: bool,
 ) -> Finding:
     """Report the cover the flags choose, else the one with stack digests and overlap; a refusal fails only when the flags choose."""
     if flag_error:
@@ -258,7 +259,7 @@ def _cover_finding(
     try:
         cover = select_cover(elements, documents, directory, plugin, mode or STACKS_WITH_OVERLAP)
     except UnharnessError as error:
-        return Finding(Status.FAIL if mode else Status.WARN, "cover", str(error))
+        return Finding(Status.FAIL if loads_you and mode else Status.WARN, "cover", str(error))
     chosen = _in_render_order(_manifesto_slugs(elements), [*cover.stacks, *cover.singles.values()])
     stems = ", ".join(digest.stem for digest in chosen) or NO_DIGESTS
     return Finding(Status.OK, "cover", f"{stems}; {_word_count(digest.text for digest in chosen)} words")
@@ -277,10 +278,10 @@ def _prompt_size_finding(elements: list[Element], documents: list[Document], dir
     return Finding(Status.OK, name, f"full {full} words; shortest {shortest} words")
 
 
-def _session_findings(documents: list[Document], directory: Path, modes: Modes) -> list[Finding]:
+def _session_findings(documents: list[Document], directory: Path, modes: Modes, loads_you: bool) -> list[Finding]:
     """Check the four session files against the stack; a problem fails for the pair the flags load, else warns."""
     return [
-        _session_finding(name, directory, documents, loaded=pair == _loaded_pair(modes))
+        _session_finding(name, directory, documents, loaded=loads_you and pair == _loaded_pair(modes))
         for pair in (FULL_FILES, MINIFIED_FILES)
         for name in (pair.interplay, pair.commitments)
     ]
@@ -385,12 +386,12 @@ def _manifesto_slugs(elements: list[Element]) -> list[str]:
     return list(dict.fromkeys(stack_slugs(elements)))
 
 
-def _single_finding(slug: str, directory: Path, plugin: Path, hashes: dict[str, str], mode: DigestMode | None) -> Finding:
+def _single_finding(slug: str, directory: Path, plugin: Path, hashes: dict[str, str], mode: DigestMode | None, loads_you: bool) -> Finding:
     located = locate_single(slug, directory, plugin)
     if located is None:
-        loaded = mode is not None and not mode.stacks
+        loaded = loads_you and mode is not None and not mode.stacks
         return Finding(Status.FAIL if loaded else Status.WARN, f"digest {slug}", missing_message(slug, directory, plugin))
-    return _usable_finding(located, hashes, loaded=mode is not None)
+    return _usable_finding(located, hashes, loaded=loads_you and mode is not None)
 
 
 def _usable_finding(located: Located, hashes: dict[str, str], loaded: bool) -> Finding:
