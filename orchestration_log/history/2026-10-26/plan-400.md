@@ -14,3 +14,4 @@ Units:
 - U4 done, core c03d2dd (385 tests). D1 reviews (spec, quality) launched on the code; U5 docs running.
 - D1: spec review FAIL on 5 minors (1 version → release commit; 5 → spec amendment; 2-4 → F1 fix unit, launched). Quality reviewer holds until a PASS spec verdict: after F1, rerun d1-spec, then continue d1-quality.
 - Reviews: code spec PASS (d2-spec), docs spec PASS (d3-docs); quality not ready (d2-quality): F3 launched. After F3: quality re-review, then release: version 4.0.0 everywhere, rebase core onto session/long-run to drop merge d57db38, e2e capture, main, tags.
+Status: DONE 2026-10-26, main 643eaec, tags v4.0.0 + pypi-4.0.0; see summary-steward.md.

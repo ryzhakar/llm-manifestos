@@ -70,3 +70,7 @@
 2026-10-26T20:43+0200 | agent:r1-release | receipt | stopped before ship: c4e0892 version commit on 361009b; check 3 (prompt --agent no-such-agent) exit 1 on uncompiled other; check 8 hung (no prompt given, so launch read the terminal)
 2026-10-26T20:43+0200 | self | discovery | both failures are my brief's errors: check 3 is the specified refusal; check 8 rerun with a prompt file prints the command, and with echo as launcher passes one --settings holding the owner key first then the strip keys
 2026-10-26T20:43+0200 | self | decision | queue 70; r1-release told to ship
+2026-10-26T20:45+0200 | agent:r1-release | receipt | released: main 643eaec, tags v4.0.0 + pypi-4.0.0, publish run 40380419875 success
+2026-10-26T20:45+0200 | self | discovery | verified: origin/main, origin/session/long-run, HEAD at 643eaec; both tags on it; run conclusion success; PyPI unharness 4.0.0; .manifestos/ present in the main checkout
+2026-10-26T20:45+0200 | self | decision | core worktree and branch removed; wake 41bc9237 deleted; summary-steward.md and baseline-steward.md written
+2026-10-26T20:45+0200 | self | span-event | close; span steward: 4.0.0 shipped at 643eaec, clean tree after this commit; open: queue 56, plugin update to 4.0.0 in the logins, review of 64-70; next: owner installs manifesto plugin 4.0.0
