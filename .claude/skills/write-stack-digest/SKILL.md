@@ -4,7 +4,7 @@ description: "Write one stack's digest: the plain text a small model carries in 
 ---
 
 <take-the-members>
-Take the member list from the stack index, the list in `.manifestos.yaml` naming the manifestos a project binds; never take members from elsewhere.
+Take the member list from the stack index, the list in `.manifestos/config.yaml` naming the manifestos a project binds; never take members from elsewhere.
 Read each member's digest, the plain text the `write-digest` skill writes, whole; never read the original manifesto.
 </take-the-members>
 
@@ -48,7 +48,7 @@ Write the body alone, in portable markdown, markdown with no feature past paragr
 </shape-the-file>
 
 <save-the-file>
-Save it as `.claude/digests/<slugs sorted, joined by +>.md` in the project that declares the stack; never save the working copy elsewhere.
+Save it as `.manifestos/digests/<slugs sorted, joined by +>.md` in the project that declares the stack; never save the working copy elsewhere.
 Save a tracked reference copy as `plugin/digests/stacks/<slugs sorted, joined by +>.md` in the manifesto repo when the owner rules it, as the owner ruled for the Petro stack on 2026-10-14; never save one without such a ruling.
 Keep the reference copy as the cut the ruling named; never edit it without a new cut recorded.
 </save-the-file>

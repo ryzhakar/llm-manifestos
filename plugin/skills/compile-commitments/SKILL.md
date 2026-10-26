@@ -1,12 +1,18 @@
 ---
 name: compile-commitments
 description: >
-  Write the interplay file and the commitments file that a session's system prompt carries, and their min pair, from the stack the session binds to.
-  "/compile-commitments", "compile the commitments", "precompile the oath", or a change to the stack.
+  Write the interplay file and the commitments file that a session's system prompt carries, and their min pair, from the stack the session binds to, or from one subagents key's stack.
+  "/compile-commitments", "/compile-commitments <key>", "compile the commitments", "precompile the oath", or a change to the stack.
 ---
 
 <read-the-stack>
-Run `${CLAUDE_PLUGIN_ROOT}/bin/unharness stack --config <path>` into a temporary file, where `<path>` is the config, the working folder's `.manifestos.yaml`, which lists the stack, the ordered elements, each a manifesto, a skill, or a file, that the session binds to; never send the command's output into the conversation.
+Take the optional argument `<key>`, a key under `subagents:` in the config, `.manifestos/config.yaml` in the working folder, which lists the stack, the ordered elements, each a manifesto, a skill, or a file, that a session binds to; without `<key>`, compile the main stack under `you:`.
+
+Accept `<key>` only when it equals a key under `subagents:` exactly as written, `other` included; for any other word, stop and name the keys in config order, since `unharness` would map an agent type to another key's folder; never compile for a word that is no key.
+
+Set the target folder: `.manifestos/agents/<key>/` with `<key>`, creating it, and `.manifestos/` without; write every file below there and never elsewhere.
+
+Run `${CLAUDE_PLUGIN_ROOT}/bin/unharness stack --config <path>`, adding `--agent <key>` with `<key>`, into a temporary file, where `<path>` is the config; never send the command's output into the conversation.
 
 Read the temporary file whole, the `<stack>` block and then the full text of every element; never read a part of it.
 
@@ -28,7 +34,7 @@ Where no rule resolves a tension, set a priority order among the elements in con
 </map-convergence-and-tension>
 
 <write-the-interplay-file>
-Write `.manifestos.interplay.md` beside the config; never write it elsewhere.
+Write `interplay.md` in the target folder; never write it elsewhere.
 
 Open the file with the `<stack>` block copied verbatim from the temporary file; never alter, drop, or reorder a line of it.
 
@@ -38,7 +44,7 @@ Keep every seam, a sentence that names the config, the file, the tool, or the wa
 </write-the-interplay-file>
 
 <write-the-commitments-file>
-Write `.manifestos.commitments.md` beside the config; never write it elsewhere.
+Write `commitments.md` in the target folder; never write it elsewhere.
 
 Open the file with the same `<stack>` block copied verbatim; never open it with anything else.
 
@@ -47,7 +53,7 @@ After the block, write `<commitments>` ... `</commitments>` holding, for each el
 Fill each line with the element's own demand and the behavior that meets it; never with a seam.
 
 <never_do_this reason="the commitment names the config and the tool that made the prompt">
-I must read every element in .manifestos.yaml, and I will run unharness stack before each compile.
+I must read every element in .manifestos/config.yaml, and I will run unharness stack before each compile.
 </never_do_this>
 
 <do_exactly_this>
@@ -56,7 +62,7 @@ I must count every line I ship as spent, and I will write the least that does th
 </write-the-commitments-file>
 
 <write-the-minified-pair>
-Write `.manifestos.interplay.min.md` and `.manifestos.commitments.min.md` beside the config, in the same run and after the full pair; never write one without its full counterpart or from the elements' texts instead of that counterpart.
+Write `interplay.min.md` and `commitments.min.md` in the target folder, in the same run and after the full pair; never write one without its full counterpart or from the elements' texts instead of that counterpart.
 
 Open each with the same `<stack>` block copied verbatim; never alter, drop, or reorder a line of it.
 
@@ -74,7 +80,7 @@ After writing each file, report its path; never print its content to the convers
 </report-the-files>
 
 <confirm-the-compile>
-Run `${CLAUDE_PLUGIN_ROOT}/bin/unharness prompt --config <path> > /dev/null` and `${CLAUDE_PLUGIN_ROOT}/bin/unharness prompt --minified --config <path> > /dev/null`; never report the files as done without both runs.
+Run `${CLAUDE_PLUGIN_ROOT}/bin/unharness prompt --config <path> > /dev/null` and `${CLAUDE_PLUGIN_ROOT}/bin/unharness prompt --minified --config <path> > /dev/null`, adding `--agent <key>` to both with `<key>`; never report the files as done without both runs.
 
 Report the exit code of each run; never report a pass on a code other than 0.
 

@@ -12,7 +12,7 @@ Sort the slugs, drop repeats, and join them with `+` into the stem, the digest's
 </name-the-stem>
 
 <read-the-manifestos>
-Run `${CLAUDE_PLUGIN_ROOT}/bin/unharness stack --config <path> <slug>...` with the sorted slugs into a temporary file, where `<path>` is the config, the working folder's `.manifestos.yaml`; never send the command's output into the conversation.
+Run `${CLAUDE_PLUGIN_ROOT}/bin/unharness stack --config <path> <slug>...` with the sorted slugs into a temporary file, where `<path>` is the config, `.manifestos/config.yaml` in the working folder; never send the command's output into the conversation.
 Read the temporary file whole, the full text of every manifesto it holds; never read a part, a summary, or a shipped digest in its place.
 Bind to those manifestos through the `manifesto-oath` skill; never write unbound.
 </read-the-manifestos>
@@ -55,13 +55,13 @@ Name each demand dropped on purpose, whether the cap or a conflict forced the dr
 </check-against-the-source>
 
 <write-the-file>
-Write the body alone, as paragraphs and lists, to `.claude/digests/<stem>.md` beside the config, creating the folder; never add a header, a frontmatter, or a title.
+Write the body alone, as paragraphs and lists, to `.manifestos/digests/<stem>.md` beside the config, creating the folder; never add a header, a frontmatter, or a title.
 Report the file's path and its word count from `wc -w` on the file; never print its text into the conversation.
 Stop at the digest and its stamp; never write an eval record or run a gate.
 </write-the-file>
 
 <stamp-the-digest>
-Run `${CLAUDE_PLUGIN_ROOT}/bin/unharness stamp .claude/digests/<stem>.md --config <path>`; never report the digest done without that run.
+Run `${CLAUDE_PLUGIN_ROOT}/bin/unharness stamp .manifestos/digests/<stem>.md --config <path>`; never report the digest done without that run.
 Report its exit code; never report a pass on a code other than 0.
 On a code other than 0, fix what the printed message names and run the stamp again; never stop at a failing run.
 </stamp-the-digest>
