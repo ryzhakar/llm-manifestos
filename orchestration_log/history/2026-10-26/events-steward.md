@@ -43,3 +43,5 @@
 2026-10-26T20:12+0200 | self | delegation | u5-docs and d1-spec resumed by message; d1-quality still waits for d1-spec.md
 2026-10-26T20:14+0200 | agent:d1-spec | receipt | d1-spec.md: Verdict FAIL, 5 minor (1 version unraised; 2 bare trailing --settings passes through; 3 no pinned pre-recorded stack block test; 4 no --agent with --digests/--stack-digests test; 5 colon trim unrecorded)
 2026-10-26T20:14+0200 | self | decision | 1 rides the release commit; 5 recorded as amendment to spec decision 13; 2-4 batched with the quality findings into one fix unit; d1-quality told to start. Alternative: fix 2-4 before the quality review
+2026-10-26T20:15+0200 | agent:d1-quality | receipt | quality review held: its definition reviews only on a PASS spec verdict; Ready to merge: No, no review done
+2026-10-26T20:15+0200 | self | delegation | worktree fix (feat/4.0.0-fix) from core c03d2dd; f1-fix (sonnet implementer) launched from prompts/f1-fix.md for spec findings 2-4; then a fresh spec review, then the quality review

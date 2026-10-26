@@ -12,3 +12,4 @@ Units:
 - U1 and U2 done, folded into core ae4c735 (365 tests). U3 hooks + SCHEMA and U4 doctor launched on their own branches from ae4c735. Next: merge both, U5 skills + docs + repo's own move, review, e2e, release.
 - U3 done, core 9968e96. Before main: rebase core onto session/long-run to drop the agents' merge commits (linear main). Later briefs: no merges.
 - U4 done, core c03d2dd (385 tests). D1 reviews (spec, quality) launched on the code; U5 docs running.
+- D1: spec review FAIL on 5 minors (1 version → release commit; 5 → spec amendment; 2-4 → F1 fix unit, launched). Quality reviewer holds until a PASS spec verdict: after F1, rerun d1-spec, then continue d1-quality.
