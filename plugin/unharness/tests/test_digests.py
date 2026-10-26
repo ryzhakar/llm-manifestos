@@ -678,3 +678,41 @@ def test_a_flag_refusal_comes_before_an_unresolved_element_is_reported(tmp_path,
     captured = capsys.readouterr()
     assert (status, captured.out) == (1, "")
     assert captured.err == "unharness: --overlap requires --stack-digests\n"
+
+
+REVIEWER_TAIL = "\nsubagents:\n  reviewer:\n    - alpha\n    - beta\n"
+
+
+def agent_prompt(world, monkeypatch, capsys, *flags: str) -> tuple[int, str, str]:
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(world.login))
+    config = load(world.config)
+    stack = stack_block(resolve_stack(config.subagents["reviewer"], config.directory, config.registry, world.login))
+    folder = world.project / ".manifestos" / "agents" / "reviewer"
+    write(folder / "interplay.md", f"{stack}\n\n<interplay>\nAgree.\n</interplay>\n")
+    write(folder / "commitments.md", f"{stack}\n\n<commitments>\nI will.\n</commitments>\n")
+    status = main(["prompt", "--config", str(world.config), "--agent", "reviewer", *flags])
+    captured = capsys.readouterr()
+    return status, captured.out, captured.err
+
+
+def test_prompt_agent_with_digests_swaps_the_matched_keys_manifestos_for_their_digests(tmp_path, monkeypatch, capsys):
+    world = World(tmp_path, tail=REVIEWER_TAIL)
+    for slug in SLUGS:
+        world.digest(slug, slug[0].upper() * 10)
+
+    status, out, _ = agent_prompt(world, monkeypatch, capsys, "--digests")
+
+    assert status == 0
+    assert constitution_of(out) == "\n".join([single_block("alpha", "A" * 10), single_block("beta", "B" * 10)])
+
+
+def test_prompt_agent_with_stack_digests_swaps_the_matched_keys_members_for_their_stack_digest(tmp_path, monkeypatch, capsys):
+    world = World(tmp_path, tail=REVIEWER_TAIL)
+    for slug in SLUGS:
+        world.digest(slug, slug[0].upper() * 10)
+    world.digest("alpha+beta", "AB")
+
+    status, out, _ = agent_prompt(world, monkeypatch, capsys, "--stack-digests")
+
+    assert status == 0
+    assert constitution_of(out) == "<alpha+beta>\nAB\n</alpha+beta>"
