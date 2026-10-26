@@ -202,3 +202,32 @@ def test_a_name_with_whitespace_stops_the_load(tmp_path):
 
     with pytest.raises(UnharnessError, match=r"element 1 of you name 'my notes' must hold no whitespace; add name:"):
         load(path)
+
+
+BLOCK_INDICATORS = [">", "|", ">-", "|+", "|2"]
+
+
+@pytest.mark.parametrize("indicator", BLOCK_INDICATORS)
+def test_a_block_scalar_as_a_mapping_value_stops_the_load_naming_the_key(tmp_path, indicator):
+    path = write_config(tmp_path, f"you:\n  - name: dry\n    purpose: {indicator}\n      one home\n")
+
+    with pytest.raises(UnharnessError) as failure:
+        load(path)
+
+    assert str(failure.value) == "key 'purpose' holds a block scalar; block scalars are not supported; write the value on one line"
+
+
+@pytest.mark.parametrize("indicator", BLOCK_INDICATORS)
+def test_a_block_scalar_as_a_list_item_stops_the_load_naming_the_line(tmp_path, indicator):
+    path = write_config(tmp_path, f"you:\n  - {indicator}\n    one home\n")
+
+    with pytest.raises(UnharnessError) as failure:
+        load(path)
+
+    assert str(failure.value) == f"the line '- {indicator}' holds a block scalar; block scalars are not supported; write the value on one line"
+
+
+def test_a_value_that_merely_starts_with_a_fold_sign_still_reads_as_text(tmp_path):
+    config = load(write_config(tmp_path, "you:\n  - name: dry\n    purpose: > 3 homes\n"))
+
+    assert config.you[0].purpose == "> 3 homes"

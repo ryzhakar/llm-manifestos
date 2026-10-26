@@ -25,6 +25,8 @@ TAB_INDENT = re.compile(r" *\t")
 YAML_NULLS = ("", "~", "null")
 QUOTED_SCALAR = re.compile(r"""^(["'])(.*?)\1(?:\s+#.*)?$""")
 TRAILING_COMMENT = re.compile(r"(?:^|\s+)#.*$")
+BLOCK_SCALAR = re.compile(r"^[>|](?:[-+]\d?|\d[-+]?)?(?:\s+#.*)?$")
+BLOCK_SCALAR_CAUSE = "block scalars are not supported; write the value on one line"
 
 
 class UnharnessError(Exception):
@@ -172,6 +174,11 @@ def _split_entry(text: str) -> tuple[str, str]:
     return (text[:entry.start()], text[entry.end():]) if entry else (text, "")
 
 
+def _refuse_block_scalar(text: str, subject: str) -> None:
+    if BLOCK_SCALAR.match(text.strip()):
+        raise UnharnessError(f"{subject} holds a block scalar; {BLOCK_SCALAR_CAUSE}")
+
+
 def _is_item(line: str) -> bool:
     stripped = line.lstrip()
     return stripped == LIST_MARKER.strip() or stripped.startswith(LIST_MARKER)
@@ -189,6 +196,7 @@ def _parse_list(lines: list[str], i: int, indent: int):
     while i < len(lines) and _indent(lines[i]) == indent and _is_item(lines[i]):
         content = lines[i].lstrip()[len(LIST_MARKER):]
         if not MAPPING_ENTRY.search(content):
+            _refuse_block_scalar(content, f"the line {lines[i].strip()!r}")
             result.append(_scalar(content))
             i += 1
             continue
@@ -210,6 +218,7 @@ def _parse_mapping(lines: list[str], i: int, indent: int):
         key = _scalar(key)
         if key in result:
             raise UnharnessError(f"key {key!r} appears twice")
+        _refuse_block_scalar(rest, f"key {key!r}")
         value = _scalar(rest)
         if value is not None:
             result[key] = value
