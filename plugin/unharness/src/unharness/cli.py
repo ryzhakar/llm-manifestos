@@ -132,7 +132,18 @@ def _launch(arguments: argparse.Namespace, launcher: list[str]) -> int:
         raise UnharnessError("no prompt: pass PROMPT or pipe unharness prompt")
     prompt = arguments.prompt if arguments.prompt is not None else sys.stdin.read()
     options = Options(arguments.keep_claude_md, arguments.keep_web_search, arguments.no_hooks, launcher, arguments.claude_version)
-    return launch(prompt, options, shipped_switches(), os.environ, cache_home(os.environ, Path.home()), terminal_device(), reopen_terminal, execute_launcher, version_output, read_text_file)
+    return launch(
+        prompt,
+        options,
+        shipped_switches(),
+        os.environ,
+        cache_home(os.environ, Path.home()),
+        terminal_device(),
+        reopen_terminal,
+        execute_launcher,
+        version_output,
+        read_text_file,
+    )
 
 
 def _stamp(arguments: argparse.Namespace, login: Path) -> str:
