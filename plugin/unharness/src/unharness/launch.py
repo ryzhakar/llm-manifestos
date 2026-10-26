@@ -67,7 +67,9 @@ def launch(
     prompt_file = _write_prompt(prompt, cache_home)
     passed = _passed_switches(switches, options, chosen)
     variables = _strip_environment(passed)
-    arguments = _strip_arguments(prompt_file, passed, owner_settings)
+    settings, overridden_keys = _merged_settings(owner_settings, _strip_settings(passed))
+    _note_overridden_settings(overridden_keys)
+    arguments = _strip_arguments(prompt_file, passed, settings)
     assignments = [f"{name}={value}" for name, value in variables.items()]
     if not options.launcher:
         print(shlex.join(["env", *assignments, DEFAULT_LAUNCHER, *arguments]), f"<{terminal}")
@@ -167,18 +169,26 @@ def _strip_environment(passed: Sequence[Switch]) -> dict[str, str]:
     return {**{switch.name: switch.value for switch in passed if switch.kind == "env"}, **STAND_DOWN_MARKER}
 
 
-def _strip_arguments(prompt_file: Path, passed: Sequence[Switch], owner_settings: dict) -> list[str]:
+def _strip_settings(passed: Sequence[Switch]) -> dict:
+    return {switch.name: switch.value for switch in passed if switch.kind == "settings"}
+
+
+def _strip_arguments(prompt_file: Path, passed: Sequence[Switch], settings: dict) -> list[str]:
     flags = [word for switch in passed if switch.kind == "flag" for word in _flag_words(switch)]
-    settings = _merged_settings(owner_settings, {switch.name: switch.value for switch in passed if switch.kind == "settings"})
     settings_words = [SETTINGS_FLAG, json.dumps(settings, separators=(",", ":"))] if settings else []
     return [SYSTEM_PROMPT_FLAG, str(prompt_file), *flags, *settings_words]
 
 
-def _merged_settings(owner: dict, strip: dict) -> dict:
-    """Return the owner's keys in their order, then each strip key the owner did not set."""
-    for key in (key for key in strip if key in owner):
+def _merged_settings(owner: dict, strip: dict) -> tuple[dict, list[str]]:
+    """Return the owner's keys in their order, then each strip key the owner did not set, with the strip keys the owner set."""
+    overridden_keys = [key for key in strip if key in owner]
+    return {**owner, **{key: value for key, value in strip.items() if key not in owner}}, overridden_keys
+
+
+def _note_overridden_settings(keys: list[str]) -> None:
+    """Write one note on stderr for each strip key the owner's settings replaced."""
+    for key in keys:
         print(f"unharness: your {SETTINGS_FLAG} sets {key}; the strip's value is left out", file=sys.stderr)
-    return {**owner, **{key: value for key, value in strip.items() if key not in owner}}
 
 
 def _split_owner_settings(words: list[str], read_file: Callable[[str], str]) -> tuple[list[str], dict]:
