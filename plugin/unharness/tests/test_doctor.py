@@ -636,6 +636,43 @@ def test_a_cover_with_no_digest_for_a_manifesto_warns_without_flags(host, health
     assert status == 0
 
 
+AGENT_SUBAGENTS = "subagents:\n  other:\n    - name: dry\n"
+
+
+@needs_digests
+def test_under_agent_a_missing_single_digest_and_its_cover_only_warn_under_digests(host, healthy, capsys):
+    write(healthy, DIGESTED_CONFIG + AGENT_SUBAGENTS)
+    (plugin_folder(host) / "digests" / "kiss.md").unlink()
+
+    _, lines = doctor(capsys, "--config", str(healthy), "--agent", "worker", "--digests")
+
+    assert finding(lines, "digest kiss").startswith("WARN digest kiss: no digest for kiss")
+    assert finding(lines, "cover").startswith("WARN cover: no digest for kiss")
+
+
+@needs_digests
+def test_under_agent_a_stale_single_digest_only_warns_under_digests(host, healthy, capsys):
+    write(healthy, DIGESTED_CONFIG + AGENT_SUBAGENTS)
+    write(plugin_folder(host) / "manifestos" / "dry.md", "# dry\n\nChanged.\n")
+
+    _, lines = doctor(capsys, "--config", str(healthy), "--agent", "worker", "--digests")
+
+    assert finding(lines, "digest dry").startswith("WARN digest dry: ")
+
+
+@needs_digests
+def test_under_agent_a_stack_digest_without_an_index_entry_only_warns_under_stack_digests(host, healthy, capsys):
+    write(healthy, DIGESTED_CONFIG + AGENT_SUBAGENTS)
+    index_path = plugin_folder(host) / "digests" / "index.json"
+    index = json.loads(index_path.read_text())
+    del index["dry+kiss"]
+    write(index_path, json.dumps(index))
+
+    _, lines = doctor(capsys, "--config", str(healthy), "--agent", "worker", "--stack-digests")
+
+    assert finding(lines, "digest dry+kiss").startswith("WARN digest dry+kiss: ")
+
+
 @needs_digests
 def test_overlap_without_stack_digests_fails_the_cover_line_with_the_flags_message(host, healthy, capsys):
     status, lines = doctor(capsys, "--config", str(healthy), "--overlap")
