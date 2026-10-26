@@ -16,3 +16,6 @@
 2026-10-26T19:19+0200 | owner | decision | "i'm not present to answer anything. you're answering the spec agent if they as anything. also, expect \"guests\" to consult with you." Read: I answer the spec agent's questions myself; visiting sessions may consult me, handled by peers:receive
 2026-10-26T19:21+0200 | peer:gym/trainer-u3 | receipt | [ask] from trainer-u3 (gym), on the owner's word: gym .manifestos.yaml fails on a folded `>` purpose; how to validate a stack; how a role session binds its role stack; where precedence goes
 2026-10-26T19:21+0200 | self | decision | answered trainer-u3: /tmp/stkcheck/check_stacks.py resolves every stack (verified on its draft and on gym's config); role session via `prompt --config role.yaml | launch`; scopes in purposes, precedence in the interplay. Queue 64-65 written for 4.0.0
+2026-10-26T19:22+0200 | agent:s3-spec | receipt | spec part 4.0.0 appended (121 lines, 11 decisions); unverified until units build against it
+2026-10-26T19:22+0200 | self | decision | spec decisions 1-11 accepted as queue 66; queue 65 carried in the U1 brief directly; wake f7c58373 deleted
+2026-10-26T19:22+0200 | self | delegation | worktrees core (feat/4.0.0-core) and settings (feat/4.0.0-settings) from 355e6c2; u1-core and u2-settings (sonnet implementers, background) launched from history/2026-10-26/prompts/u1-core.md, u2-settings.md

@@ -396,3 +396,131 @@ Promotion is a human step, and a sweep never edits the registry. A switch enters
 11. A tarball without `cli.js` falls back to a byte scan; `--tarball` and `--docs` let the script run offline.
 12. The README table is the one derived document; the unharness README and `SCHEMA.md` point to it and name no switch.
 13. Entries that share `removes` form one row and share `default`, `option`, and `control`.
+
+# 4.0.0: subagent prompts, one project folder, settings merge, stack diff
+
+The owner's order and answers for this part are entries 48, 58-63, 64, and 65 of `queue-long-run.md` and its "Round of 2026-10-26", cited below as queue N and the round. The round kept 58, 59, 61, and 62, took 60's alternative, and ships all four changes as one release, 4.0.0. Package and plugin read 4.0.0.
+
+## The project folder (queue 58)
+
+The project folder is the folder that holds `.manifestos/`; `.manifestos/` holds every project file of ours. `--config PATH` still names the config file, and now defaults to `.manifestos/config.yaml`; the project folder is the parent of the folder holding it.
+
+| Path under the project folder | Writers | Readers |
+|---|---|---|
+| `.manifestos/config.yaml` | the owner | `config.py` (`load`, and `--json` for the hooks); `ensure-repo.sh`'s `detect_manifestos`, through which session-start, post-compact, subagent-start, and drift-reminder read it; `cli.py`'s `--config` default; doctor's `config`; the skills compile-commitments and compile-digest as `--config <path>`; `plugin/README.md`, `README.template.md`, and `plugin/SCHEMA.md` |
+| `.manifestos/preamble.md` | the owner | `session.py`'s `load_preamble`; doctor's `preamble`; `plugin/README.md` |
+| `.manifestos/interplay.md`, `commitments.md`, `interplay.min.md`, `commitments.min.md` | `/compile-commitments` | `compile.py` through `prompt`, `--minified` picking the min pair; `stack --diff`; doctor's session-file lines and `prompt size`; `plugin/README.md`; `SCHEMA.md`'s error table |
+| `.manifestos/agents/<key>/` with the same four names | `/compile-commitments <key>` | `prompt --agent`; `stack --diff --agent`; doctor's `stack subagents.<key>` lines; `plugin/README.md` |
+| `.manifestos/digests/<stem>.md` | `/compile-digest`; the repo-local skill write-stack-digest | `digests.py` (`locate_single`, `locate_stacks`); doctor's `digest` and `cover` lines; `plugin/README.md`; `README.template.md` |
+| `.manifestos/digests/index.json` | `unharness stamp` | `digests.py`'s `read_index`; doctor's `digest` lines; `plugin/README.md` |
+
+- `<key>` is a key under `subagents:` exactly as written, `other` included. Config load refuses a key that holds `/` or is `.` or `..`, with `subagents key '<key>' cannot name a folder`.
+- No hook reads a compiled file; the hooks read `config.yaml` alone.
+- A `file` source and `manifesto_dir` resolve against the project folder, as they resolved against the old config's folder. Moving the files therefore changes no element's text, no hash, and no `<stack>` line, and the moved session files load without a recompile.
+- The `## Active Manifestos` section of `CLAUDE.md` in the project folder stays the fallback when `config.yaml` is absent.
+- One home for the names: `config.py` holds the folder, file, and old-layout names and the cascade below, because the hooks import it by path and cannot import the package; `compile.py`, `session.py`, and `digests.py` import the names from it. The hooks call `python3 <config.py> --json --project <folder>`, so no shell script spells a path.
+
+## Old layout (queue 59)
+
+`config.py`'s `old_layout(project)` returns the commands that move each old path present in the project folder, run from that folder, in this order, a line appearing only when its old path exists:
+
+    mkdir -p .manifestos
+    mv .manifestos.yaml .manifestos/config.yaml
+    mv .manifestos.interplay.md .manifestos/interplay.md
+    mv .manifestos.commitments.md .manifestos/commitments.md
+    mv .manifestos.interplay.min.md .manifestos/interplay.min.md
+    mv .manifestos.commitments.min.md .manifestos/commitments.min.md
+    mv .manifestos.preamble.md .manifestos/preamble.md
+    mv .claude/digests .manifestos/digests
+
+`mkdir` appears whenever any `mv` does. When the new path already exists, its line reads `# both <old> and <new> exist; keep one and delete the other` in place of the `mv`, since `mv` would overwrite a file or nest a folder.
+
+- `load` calls `old_layout` before it reads anything, and stops when the list is not empty. The message is the one multi-line error: `old layout in <project folder>; run these there:` and then each command on its own line. No reader falls back to an old path.
+- `unharness` prints it after `unharness: ` and exits 1. Each hook receives it from `config.py --json` with status 1 and prints it on stderr, exits 0, and binds nothing, as for every config error. A project with an old config and no new one gets this message, never `no config`.
+- Doctor prints it as lines, below.
+
+## `unharness prompt --agent <type>` (queue 61, 62; the round on 60)
+
+`prompt --agent TYPE` compiles the stack of the `subagents:` key that TYPE matches, in place of `you:`, with its session files from `.manifestos/agents/<key>/`. It takes every mode flag, and the preamble is the same.
+
+`config.py`'s `subagent_key(agent_type, keys)` returns the first key that matches, in this cascade, or `None`:
+
+1. a key equal to TYPE;
+2. when TYPE holds `:`, a key equal to the part after its last `:`;
+3. the first key in config order, `other` excepted, that TYPE ends with;
+4. `other`, when the config has it.
+
+An empty TYPE goes straight to step 4. The subagent-start hook replaces its inline `match_key` with an import of `subagent_key` from `config.py`, as `describe_elements.py` imports its constants, so the cascade has one home and the hook and the package cannot disagree.
+
+- Landing on `other` by step 4 prints one line on stderr and goes on: `unharness: <type> matches no subagents key; using other:, the default stack`. A TYPE equal to `other` matches at step 1 and prints nothing.
+- No match stops with exit 1: `unharness: <type> matches no subagents key and the config has no other:; keys: <key>, <key>`, the keys in config order, or `keys: none`.
+- An empty matched list stops with `subagents.<key> is empty`.
+
+## Per-agent session files
+
+- `/compile-commitments <key>` runs the skill's steps against `unharness stack --agent <key> --config <path>` and writes the four files to `.manifestos/agents/<key>/`, creating the folder. `<key>` must be a key under `subagents:` as written; the skill refuses any other word, naming the keys, because the cascade could map a type to another key's folder. It confirms with `unharness prompt --agent <key>` and `unharness prompt --agent <key> --minified`, both to `/dev/null`, and reports both exit codes. Without an argument it writes the main four, as before.
+- `unharness stack --agent TYPE` prints the matched stack's `<stack>` block, its fingerprint, and then its constitution, exactly as `stack` prints the main stack's, with the same warning and errors. `--agent` with slugs stops with `--agent takes no slugs`.
+- `prompt --agent` checks each session file's `<stack>` block against the matched stack's, with the 3.5.0 messages. Every message names the file by its path under the project folder and the fix with the key: `.manifestos/agents/<key>/commitments.md is stale (changed: dry); run /compile-commitments <key>`. The main stack's messages read `.manifestos/commitments.md ...; run /compile-commitments`.
+
+## `--settings` merge (queue 48)
+
+Claude Code takes one `--settings`, and launch adds its own after `LAUNCHER ARGS...`, which today drops one the owner passes after `--`. Launch now merges the two.
+
+- Launch finds `--settings VALUE` and `--settings=VALUE` among the ARGS after `--`. With none, nothing changes. With two or more, it stops with `pass --settings once after --`.
+- VALUE is JSON text when its first non-space character is `{`, else a file path relative to the working folder, read as UTF-8 JSON, as Claude Code reads it. An unreadable file stops with `--settings file <path> cannot be read: <reason>`; text that is no JSON object stops with `--settings <VALUE> is not a JSON object`.
+- Launch removes the owner's words from ARGS and passes one `--settings` in its own place. The merged object holds the owner's keys in their order, then each strip key the owner did not set, in registry order. The merge is shallow: a top-level key the owner sets replaces the strip's whole value, `attribution` included.
+- The owner's value wins over the strip's, and launch prints `unharness: your --settings sets <key>; the strip's value is left out` on stderr for each such key.
+- With no settings entry passing, the owner's object passes alone. With no launcher, launch prints the 3.7.1 command unchanged, since no ARGS exist. A launcher such as a shell function that adds `--settings` inside itself stays unseen.
+
+## `unharness stack --diff` (queue 48)
+
+`unharness stack --diff [--agent TYPE] [--config PATH]` shows why session files went stale. A session file records hashes, not texts, so the diff compares signatures and never element texts.
+
+- For the main stack, or the matched agent's, it takes the four session files in the order full interplay, full commitments, min interplay, min commitments. A current file prints nothing. A missing file prints `<path>: missing`; a file without a block prints `<path>: no <stack> block`. A stale file prints `difflib.unified_diff(recorded_lines, current_lines, fromfile=<path>, tofile="current", lineterm="", n=0)`, line by line, so each changed hash, purpose, added element, removed element, or moved element shows as a `-` and `+` pair under its hunk header.
+- It exits 0 when every file is current and 1 otherwise, as `diff` does, and prints no `unharness:` line for a difference. Resolution and config errors stop as in `stack`. `--diff` with slugs stops with `--diff takes no slugs`.
+
+## Doctor
+
+`unharness doctor` resolves every stack, `you:` and each `subagents:` key, one line per stack (queue 64), and gains `--agent TYPE`. The new lines keep the rule that a finding about what `prompt` would load under the given flags is a FAIL, and any other finding a WARN.
+
+| Check | Place | OK detail | Finding |
+|---|---|---|---|
+| `layout` | first, before `config` | `<project folder>/.manifestos` | FAIL, one line per command of `old_layout`, as `FAIL layout: mv .manifestos.yaml .manifestos/config.yaml`; doctor then skips `config` and runs only the checks that need no config |
+| `stack you` | after the `element` lines | `<n> elements resolved` | FAIL with the first resolver message, or with `the stack is empty` |
+| `agent match` | after the main session-file lines, only with `--agent` | `<type> -> <key>` | WARN `<type> -> other, the default stack` on fall-through; FAIL with the no-match message |
+| `stack subagents.<key>` | next, one per key in config order | `<n> elements resolved; session files current` | the first problem among the key's element resolutions, its empty list, and its four files, in that order; FAIL for the matched key when the problem lies in its elements or the pair the flags load, WARN otherwise |
+| `manifesto plugin` | unchanged | the installed version | FAIL below 4.0.0, whose hooks read the old layout |
+
+## Block scalars (queue 65)
+
+`config.py`'s YAML reader refuses a value that is a block scalar indicator, `>` or `|` with an optional `-` or `+` and an optional digit, whether a mapping value or a list item, before it reads the indented lines below. The message names the key, or the list item's line, then the cause and the fix: `key '<key>' holds a block scalar; block scalars are not supported; write the value on one line`, or `the line '<line>' holds a block scalar; ...` with the same tail. The reader still reads frontmatter, so a manifesto whose frontmatter folds a value gets the same message through `parse_taglines.py`. SCHEMA.md's YAML subset section and its error table name the message.
+
+## Docs
+
+`plugin/README.md`, `README.template.md` (then `just readme`), the unharness README, and `plugin/SCHEMA.md` name the new paths; SCHEMA.md's title becomes `.manifestos/config.yaml Schema Reference`, its SubagentStart section points to `subagent_key` and calls `other:` the default stack, and its error table gains every message above. The skills compile-commitments, compile-digest, and manifesto-oath name `.manifestos/config.yaml` and `.manifestos/digests/`; the repo-local write-stack-digest skill saves to `.manifestos/digests/`. This repo moves its own files with the printed commands in the release commit.
+
+## Tests
+
+- Layout: each old path alone yields `mkdir` and its own line; all paths yield the order above; an existing new path yields the `# both` line; `load` stops with the multi-line message, exit 1, before a missing-config check; each hook prints it on stderr and exits 0 with empty stdout; a `file` source resolves against the project folder; moved session files load without a recompile; a key with `/`, `.`, or `..` refuses.
+- Cascade: one table of types and keys drives both `subagent_key` and the subagent-start hook, covering exact, the part after the last `:`, a suffix, the config-order tie between two suffix keys, an exact `other`, an empty type, the fall-through, and no match; the hook's named elements equal the package's choice for every row.
+- `--agent`: the fall-through warning prints once and verbatim; no match exits 1 with the keys, and with `keys: none`; an empty list refuses; each mode flag combines; agent messages name the key's path and `/compile-commitments <key>`; `stack --agent` prints the matched block; `--agent` and `--diff` each refuse slugs.
+- Settings: none, the spaced form, the `=` form, JSON text, a file path, two flags, an unreadable file, and a non-object each behave as above; owner keys come first; a shared key keeps the owner's value and prints its note; a nested object replaces whole; the printed command at 2.1.309 stays byte for byte.
+- Diff: all current prints nothing and exits 0; a changed hash, a changed purpose, an added element, and a reorder each print their hunk; missing and blockless files print their lines; exit 1 on any difference.
+- Block scalars: `>`, `|`, `>-`, `|+`, and `|2` each refuse with the message, as a mapping value and as a list item; a value that merely starts with `>` text, such as `> 3`, still reads as a string.
+- Doctor: the `layout` OK and FAIL lines and the skipped `config`; one `stack` line for `you:` and one for each key, in config order, with and without `--agent`; an unresolvable element under a key that `--agent` does not name WARNs; `agent match` OK, WARN, and FAIL; a `stack subagents.<key>` problem FAILs for the matched key under its flags and WARNs otherwise; the 4.0.0 floor.
+- Skills: `claude plugin validate` passes; end to end in this repo, `/compile-commitments implementer` writes its four files, and `unharness prompt --agent dev-cycle:implementer` and `unharness stack --diff --agent implementer` exit 0.
+
+## Decisions made in the spec
+
+1. `--config` still names the file; the project folder is its folder's parent, and `file` sources and `manifesto_dir` resolve against it, so the move needs no recompile.
+2. `.manifestos.preamble.md` moves to `.manifestos/preamble.md`, since queue 58 puts every project file of ours in the folder.
+3. The `CLAUDE.md` fallback stays, read from the project folder.
+4. `config.py` holds every layout name, `old_layout`, and `subagent_key`; the hooks import it, so the cascade has one home and no shell script spells a path.
+5. The old-layout message is the one multi-line error, so its commands paste as they print; a pair whose new path exists prints a `# both` line instead of a destructive `mv`.
+6. A subagents key that holds `/` or is `.` or `..` refuses, since it names a folder.
+7. `prompt --agent` keeps the shipped or project preamble and every mode flag.
+8. `/compile-commitments <key>` takes a config key exactly, never a type.
+9. In the `--settings` merge, the owner's value wins per top-level key, with one stderr note per key; the merge is shallow, and two owner `--settings` refuse.
+10. `stack --diff` diffs the recorded and current `<stack>` lines as a zero-context unified diff, never element texts, and exits 1 on a difference, as `diff` does.
+11. Doctor's stack lines are named `stack you` and `stack subagents.<key>`; the `element` lines for `you:` stay, and a key's line also carries its session files. Doctor gains `--agent`; a layout FAIL acts as a config FAIL; the manifesto plugin floor rises to 4.0.0.
+12. A block scalar refuses by its indicator alone, `>` or `|` with an optional chomping sign and digit, so a one-line value that starts with `>` and goes on still reads as text.
