@@ -156,6 +156,9 @@ Launch replaces Claude Code's default system prompt with the cached prompt throu
 | Co-Authored-By trailer and PR footer | setting `attribution: {"commit": "", "pr": ""}` | set |
 | Output style text | setting `outputStyle: "default"` | set |
 | Hook output | setting `disableAllHooks: true` | kept; `--no-hooks` strips |
+| Automatic compaction | setting `autoCompactEnabled: false` | set; `--autocompact <size>` passes `true` |
+| Automatic compaction window | setting `autoCompactWindow` | kept; `--autocompact <size>` passes `<size>` |
+| Idle compaction | setting `idleCompaction: false` | set; `--autocompact <size>` passes `true` |
 <!-- /switches -->
 
 `stripped` means a capture without the switch showed the text and a capture with it did not. `set` means the docs and the binary implement the switch, but no capture without it showed the text, so its removal is inferred. `kept` means launch leaves the text in unless the option beside it strips it. `undocumented` means no Claude Code docs page names the switch, so a release may drop it. The `Hook output` row covers the subagent hook too.

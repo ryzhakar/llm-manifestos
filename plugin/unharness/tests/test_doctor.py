@@ -865,7 +865,18 @@ def switch_entry(**overrides) -> dict:
 def test_the_switch_registry_line_names_the_newest_version_and_the_entry_count(host, missing_config, capsys):
     _, lines = doctor(capsys, *missing_config)
 
-    assert finding(lines, "switch registry") == "OK switch registry: newest 2.1.309; 13 switches"
+    assert finding(lines, "switch registry") == "OK switch registry: newest 2.1.309; 16 switches"
+
+
+def test_the_three_compaction_settings_follow_disable_all_hooks_as_switch_lines(host, missing_config, capsys):
+    _, lines = doctor(capsys, *missing_config)
+
+    after_hooks = lines[lines.index("OK switch settings disableAllHooks: verified at 2.1.309") + 1:][:3]
+    assert after_hooks == [
+        "OK switch settings autoCompactEnabled: verified at 2.1.309",
+        "OK switch settings autoCompactWindow: verified at 2.1.309",
+        "OK switch settings idleCompaction: verified at 2.1.309",
+    ]
 
 
 def test_every_switch_verified_at_the_version_in_use_is_ok_in_registry_order(host, missing_config, capsys):

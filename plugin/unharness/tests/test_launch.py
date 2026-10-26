@@ -27,16 +27,33 @@ DEFAULT_SETTINGS = {
     "attribution": {"commit": "", "pr": ""},
     "autoMemoryEnabled": False,
     "outputStyle": "default",
+    "autoCompactEnabled": False,
+    "idleCompaction": False,
+}
+SETTINGS_WITH_NO_HOOKS = {
+    "includeGitInstructions": False,
+    "attribution": {"commit": "", "pr": ""},
+    "autoMemoryEnabled": False,
+    "outputStyle": "default",
+    "disableAllHooks": True,
+    "autoCompactEnabled": False,
+    "idleCompaction": False,
 }
 PROMPT = "You are bound.\n"
 TERMINAL = "/dev/ttys042"
-COMMAND_OF_3_6_1 = (
+COMMAND_AT_2_1_309 = (
     "env CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_CLAUDE_MDS=1 CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1"
     " CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 CLAUDE_CODE_SILENT_TURN_REMINDER=0 CLAUDE_CODE_TODO_REMINDER_MODE=off"
     " CLAUDE_CODE_TOTAL_TOKENS_REMINDER=off UNHARNESS=1 claude --system-prompt-file {prompt_file}"
-    " --disallowedTools WebSearch --settings"
-    " '{{\"includeGitInstructions\":false,\"attribution\":{{\"commit\":\"\",\"pr\":\"\"}},"
-    "\"autoMemoryEnabled\":false,\"outputStyle\":\"default\"{hooks}}}' <{terminal}\n"
+    " --disallowedTools WebSearch --settings {settings} <{terminal}\n"
+)
+SETTINGS_WORD_WITHOUT_AUTOCOMPACT = (
+    """'{"includeGitInstructions":false,"attribution":{"commit":"","pr":""},"autoMemoryEnabled":false,"""
+    """"outputStyle":"default","autoCompactEnabled":false,"idleCompaction":false}'"""
+)
+SETTINGS_WORD_WITH_AUTOCOMPACT_500K = (
+    """'{"includeGitInstructions":false,"attribution":{"commit":"","pr":""},"autoMemoryEnabled":false,"""
+    """"outputStyle":"default","autoCompactEnabled":true,"autoCompactWindow":500000,"idleCompaction":true}'"""
 )
 
 
@@ -112,7 +129,7 @@ def test_keep_web_search_drops_the_disallow(tmp_path, capsys):
 def test_no_hooks_adds_disable_all_hooks_to_the_settings(tmp_path, capsys):
     command = printed_command(Options(False, False, True, []), tmp_path, capsys)
 
-    assert settings_of(command) == {**DEFAULT_SETTINGS, "disableAllHooks": True}
+    assert settings_of(command) == SETTINGS_WITH_NO_HOOKS
 
 
 def test_all_three_flags_combine(tmp_path, capsys):
@@ -121,7 +138,7 @@ def test_all_three_flags_combine(tmp_path, capsys):
     assert command == [
         "env", *[name for name in DEFAULT_ENVIRONMENT if "CLAUDE_MDS" not in name],
         "claude", "--system-prompt-file", str(cached_prompt(tmp_path)),
-        "--settings", json.dumps({**DEFAULT_SETTINGS, "disableAllHooks": True}, separators=(",", ":")),
+        "--settings", json.dumps(SETTINGS_WITH_NO_HOOKS, separators=(",", ":")),
     ]
 
 
@@ -206,15 +223,35 @@ def test_the_cache_is_dot_cache_in_home_unless_xdg_cache_home_is_set_and_not_emp
     assert cache_home({"XDG_CACHE_HOME": "/elsewhere"}, tmp_path) == Path("/elsewhere")
 
 
-@pytest.mark.parametrize(("options", "hooks"), [
-    (Options(False, False, False, []), ""),
-    (Options(False, False, True, []), ',"disableAllHooks":true'),
+@pytest.mark.parametrize(("options", "settings_word"), [
+    (Options(False, False, False, []), SETTINGS_WORD_WITHOUT_AUTOCOMPACT),
+    (Options(False, False, False, [], autocompact="500k"), SETTINGS_WORD_WITH_AUTOCOMPACT_500K),
 ])
-def test_the_printed_command_equals_the_one_3_6_1_printed(options, hooks, tmp_path, capsys):
+def test_the_printed_command_at_2_1_309_carries_the_settings_word_of_its_autocompact(options, settings_word, tmp_path, capsys):
     assert launch(PROMPT, options, shipped_switches(), {}, tmp_path, TERMINAL, never, never, at_tested, never) == 0
 
-    expected = COMMAND_OF_3_6_1.format(prompt_file=cached_prompt(tmp_path), hooks=hooks, terminal=TERMINAL)
+    expected = COMMAND_AT_2_1_309.format(prompt_file=cached_prompt(tmp_path), settings=settings_word, terminal=TERMINAL)
     assert capsys.readouterr().out == expected
+
+
+@pytest.mark.parametrize(("size", "settings_word"), [(None, SETTINGS_WORD_WITHOUT_AUTOCOMPACT), ("500k", SETTINGS_WORD_WITH_AUTOCOMPACT_500K)])
+def test_a_launcher_gets_the_settings_word_of_its_autocompact(size, settings_word, tmp_path):
+    commands = []
+    launch(
+        PROMPT, Options(False, False, False, ["fake"], autocompact=size), shipped_switches(), {}, tmp_path, TERMINAL,
+        lambda device: None, lambda argv, env: commands.append(argv) or 0, at_tested, never,
+    )
+
+    assert commands[0][-2:] == ["--settings", shlex.split(settings_word)[0]]
+
+
+def test_autocompact_combines_with_no_hooks(tmp_path, capsys):
+    command = printed_command(Options(False, False, True, [], autocompact="200k"), tmp_path, capsys)
+
+    assert settings_of(command) == {
+        **SETTINGS_WITH_NO_HOOKS, "autoCompactEnabled": True, "autoCompactWindow": 200000, "idleCompaction": True,
+    }
+    assert list(settings_of(command))[-4:] == ["disableAllHooks", "autoCompactEnabled", "autoCompactWindow", "idleCompaction"]
 
 
 def entry(**overrides) -> dict:
@@ -466,7 +503,9 @@ def test_owner_settings_that_are_no_json_object_stop_launch(value, file_text, tm
 def test_the_owner_value_wins_a_shared_key_and_launch_notes_each_one_on_stderr(tmp_path, capsys):
     argv, err = launched_with(["--settings", '{"outputStyle":"mine","model":"opus","autoMemoryEnabled":true}'], tmp_path, capsys)
 
-    assert list(settings_of(argv)) == ["outputStyle", "model", "autoMemoryEnabled", "includeGitInstructions", "attribution"]
+    assert list(settings_of(argv)) == [
+        "outputStyle", "model", "autoMemoryEnabled", "includeGitInstructions", "attribution", "autoCompactEnabled", "idleCompaction",
+    ]
     assert settings_of(argv)["outputStyle"] == "mine" and settings_of(argv)["autoMemoryEnabled"] is True
     assert err == (
         "unharness: your --settings sets autoMemoryEnabled; the strip's value is left out\n"
@@ -528,3 +567,22 @@ def test_a_version_with_no_autocompact_entry_passes_none_and_notes_it_only_when_
     output = capsys.readouterr()
     assert "--settings" not in output.out
     assert output.err == note
+
+
+def test_the_owners_auto_compact_enabled_without_autocompact_wins_with_one_note_and_idle_compaction_still_passes_false(tmp_path, capsys):
+    argv, err = launched_with(["--settings", '{"autoCompactEnabled":true}'], tmp_path, capsys)
+
+    assert settings_of(argv)["autoCompactEnabled"] is True and settings_of(argv)["idleCompaction"] is False
+    assert "autoCompactWindow" not in settings_of(argv)
+    assert err == "unharness: your --settings sets autoCompactEnabled; the strip's value is left out\n"
+
+
+def test_the_owners_window_beside_autocompact_wins_with_one_note(tmp_path, capsys):
+    commands = []
+    launch(
+        PROMPT, Options(False, False, False, ["fake", "--settings", '{"autoCompactWindow":300000}'], autocompact="500k"), shipped_switches(), {},
+        tmp_path, TERMINAL, lambda device: None, lambda argv, env: commands.append(argv) or 0, at_tested, never,
+    )
+
+    assert settings_of(commands[0]) == {**DEFAULT_SETTINGS, "autoCompactEnabled": True, "autoCompactWindow": 300000, "idleCompaction": True}
+    assert capsys.readouterr().err == "unharness: your --settings sets autoCompactWindow; the strip's value is left out\n"

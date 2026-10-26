@@ -11,5 +11,8 @@
   {"name": "attribution", "kind": "settings", "value": {"commit": "", "pr": ""}, "removes": "Co-Authored-By trailer and PR footer", "documented": true, "control": false, "verified": ["2.1.309"], "default": true, "option": null},
   {"name": "autoMemoryEnabled", "kind": "settings", "value": false, "removes": "Auto memory section", "documented": true, "control": false, "verified": ["2.1.309"], "default": true, "option": null},
   {"name": "outputStyle", "kind": "settings", "value": "default", "removes": "Output style text", "documented": true, "control": false, "verified": ["2.1.309"], "default": true, "option": null},
-  {"name": "disableAllHooks", "kind": "settings", "value": true, "removes": "Hook output", "documented": true, "control": true, "verified": ["2.1.309"], "default": false, "option": "--no-hooks"}
+  {"name": "disableAllHooks", "kind": "settings", "value": true, "removes": "Hook output", "documented": true, "control": true, "verified": ["2.1.309"], "default": false, "option": "--no-hooks"},
+  {"name": "autoCompactEnabled", "kind": "settings", "value": false, "given": true, "removes": "Automatic compaction", "documented": true, "control": false, "verified": ["2.1.309"], "default": true, "option": "--autocompact"},
+  {"name": "autoCompactWindow", "kind": "settings", "value": null, "given": "<size>", "removes": "Automatic compaction window", "documented": true, "control": false, "verified": ["2.1.309"], "default": false, "option": "--autocompact"},
+  {"name": "idleCompaction", "kind": "settings", "value": false, "given": true, "removes": "Idle compaction", "documented": true, "control": false, "verified": ["2.1.309"], "default": true, "option": "--autocompact"}
 ]

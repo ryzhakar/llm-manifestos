@@ -20,6 +20,9 @@ SHIPPED_NAMES = [
     "autoMemoryEnabled",
     "outputStyle",
     "disableAllHooks",
+    "autoCompactEnabled",
+    "autoCompactWindow",
+    "idleCompaction",
 ]
 
 
@@ -35,11 +38,15 @@ def text_of(*entries: dict) -> str:
     return json.dumps(list(entries))
 
 
-def test_the_shipped_registry_holds_the_thirteen_switches_3_6_1_passes_in_its_order():
+def test_the_shipped_registry_holds_the_thirteen_switches_3_6_1_passes_then_the_three_compaction_settings():
     switches = shipped_switches()
 
     assert [switch.name for switch in switches] == SHIPPED_NAMES
     assert all(switch.verified == ("2.1.309",) for switch in switches)
+
+
+def test_every_shipped_entry_is_verified_at_the_same_versions_so_no_version_drops_a_switch():
+    assert len({switch.verified for switch in shipped_switches()}) == 1
 
 
 def test_the_shipped_registry_marks_what_the_spec_marks():
@@ -48,13 +55,24 @@ def test_the_shipped_registry_marks_what_the_spec_marks():
     undocumented = {name for name, switch in by_name.items() if not switch.documented}
     uncontrolled = {name for name, switch in by_name.items() if not switch.control}
     assert undocumented == {"CLAUDE_CODE_SILENT_TURN_REMINDER", "CLAUDE_CODE_TODO_REMINDER_MODE", "CLAUDE_CODE_TOTAL_TOKENS_REMINDER"}
-    assert uncontrolled == {"attribution", "outputStyle", "autoMemoryEnabled", "CLAUDE_CODE_DISABLE_AUTO_MEMORY"}
+    assert uncontrolled == {
+        "attribution", "outputStyle", "autoMemoryEnabled", "CLAUDE_CODE_DISABLE_AUTO_MEMORY",
+        "autoCompactEnabled", "autoCompactWindow", "idleCompaction",
+    }
     assert {name: switch.option for name, switch in by_name.items() if switch.option} == {
         "CLAUDE_CODE_DISABLE_CLAUDE_MDS": "--keep-claude-md",
         "--disallowedTools": "--keep-web-search",
         "disableAllHooks": "--no-hooks",
+        "autoCompactEnabled": "--autocompact",
+        "autoCompactWindow": "--autocompact",
+        "idleCompaction": "--autocompact",
     }
-    assert [name for name, switch in by_name.items() if not switch.default] == ["disableAllHooks"]
+    assert [name for name, switch in by_name.items() if not switch.default] == ["disableAllHooks", "autoCompactWindow"]
+    assert {name: (switch.kind, switch.value, switch.given, switch.removes) for name, switch in by_name.items() if switch.option == "--autocompact"} == {
+        "autoCompactEnabled": ("settings", False, True, "Automatic compaction"),
+        "autoCompactWindow": ("settings", None, "<size>", "Automatic compaction window"),
+        "idleCompaction": ("settings", False, True, "Idle compaction"),
+    }
 
 
 def test_a_valid_text_loads_each_kind_with_its_value():
