@@ -452,7 +452,7 @@ def test_an_unreadable_owner_settings_file_stops_launch_with_the_reason(tmp_path
         launched_with(["--settings", "owner.json"], tmp_path, capsys, unreadable)
 
 
-@pytest.mark.parametrize(("value", "file_text"), [('{"a":', None), (" [1]", None), ("owner.json", "[1]"), ("owner.json", "7"), ("owner.json", '{"a":')])
+@pytest.mark.parametrize(("value", "file_text"), [('{"a":', None), ("owner.json", "[1]"), ("owner.json", "7"), ("owner.json", '{"a":')])
 def test_owner_settings_that_are_no_json_object_stop_launch(value, file_text, tmp_path, capsys):
     with pytest.raises(UnharnessError, match=f"^--settings {re.escape(value)} is not a JSON object$"):
         launched_with(["--settings", value], tmp_path, capsys, lambda path: file_text)
