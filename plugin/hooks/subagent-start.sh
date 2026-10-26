@@ -60,7 +60,7 @@ try:
 except:
     print("")
 ' 2>/dev/null || echo "")
-export AGENT_TYPE
+export AGENT_TYPE CONFIG_MODULE
 
 # If SUBAGENT_SECTION is empty/missing, emit fallback with full skill injection
 if [ -z "${SUBAGENT_SECTION:-}" ] || [ "${SUBAGENT_SECTION}" = "{}" ]; then
@@ -71,9 +71,12 @@ if [ -z "${SUBAGENT_SECTION:-}" ] || [ "${SUBAGENT_SECTION}" = "{}" ]; then
     exit 0
 fi
 
-# Match agent_type against SUBAGENT_SECTION keys using robust cascade
+# Match agent_type against SUBAGENT_SECTION keys with the cascade of config.py
 MATCHED_ELEMENTS=$(python3 << 'PYEOF'
 import json, os, sys
+
+sys.path.insert(0, os.path.dirname(os.environ["CONFIG_MODULE"]))
+from config import subagent_key
 
 agent_type = os.environ.get("AGENT_TYPE", "").strip()
 sub_raw = os.environ.get("SUBAGENT_SECTION", "{}")
@@ -86,33 +89,11 @@ except:
 if not sub or not isinstance(sub, dict):
     sys.exit(1)
 
-def match_key(agent_type, keys):
-    """Robust cascade: exact → strip-prefix → suffix → other."""
-    if not agent_type:
-        return keys.get("other")
-
-    # a. Exact match
-    if agent_type in keys:
-        return keys[agent_type]
-
-    # b. Strip prefix (qualified name → bare name)
-    bare = agent_type.split(":")[-1] if ":" in agent_type else None
-    if bare and bare in keys:
-        return keys[bare]
-
-    # c. Suffix match — any key is a suffix of agent_type
-    for k in keys:
-        if k != "other" and agent_type.endswith(k):
-            return keys[k]
-
-    # d. Fall back to other
-    return keys.get("other")
-
-elements = match_key(agent_type, sub)
-if elements is None:
+key = subagent_key(agent_type, list(sub))
+if key is None:
     sys.exit(1)
 
-print(json.dumps(elements))
+print(json.dumps(sub[key]))
 PYEOF
 ) || true
 

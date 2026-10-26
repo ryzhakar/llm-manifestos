@@ -4,10 +4,14 @@ import json
 import os
 import subprocess
 import tempfile
+import sys
 import unittest
 
 PLUGIN_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HOOKS = os.path.join(PLUGIN_ROOT, "hooks")
+sys.path.insert(0, os.path.join(PLUGIN_ROOT, "unharness", "src", "unharness"))
+from config import subagent_key
+
 FIRST_PRINCIPLES = os.path.join(PLUGIN_ROOT, "manifestos", "first-principles.md")
 
 
@@ -160,6 +164,35 @@ class SubagentStart(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         out = json.loads(r.stdout)["hookSpecificOutput"]
         self.assertIn("no-such-manifesto", out["additionalContext"])
+
+
+CASCADE_ROWS = (
+    ("exact", "worker", ["worker", "other"], "worker"),
+    ("part after the last colon", "dev-cycle:implementer", ["implementer", "other"], "implementer"),
+    ("suffix", "my-implementer", ["implementer", "other"], "implementer"),
+    ("config order between two suffix keys", "code-reviewer", ["viewer", "reviewer"], "viewer"),
+    ("exact other", "other", ["worker", "other"], "other"),
+    ("empty type", "", ["worker", "other"], "other"),
+    ("fall-through", "stranger", ["worker", "other"], "other"),
+    ("no match", "stranger", ["worker"], None),
+)
+NO_ROLE_MATCH = "No role-specific elements matched"
+
+
+class SubagentCascade(unittest.TestCase):
+    def test_subagent_key_and_the_hook_choose_the_same_key_for_every_row(self):
+        for label, agent_type, keys, expected in CASCADE_ROWS:
+            with self.subTest(label):
+                self.assertEqual(subagent_key(agent_type, keys), expected)
+                config = "subagents:\n" + "".join(f"  {key}:\n    - element-of-{key}\n" for key in keys)
+                r = run_hook("subagent-start.sh", config, stdin=json.dumps({"agent_type": agent_type}))
+                context = json.loads(r.stdout)["hookSpecificOutput"]["additionalContext"]
+                if expected is None:
+                    self.assertIn(NO_ROLE_MATCH, context)
+                    continue
+                self.assertNotIn(NO_ROLE_MATCH, context)
+                named = [key for key in keys if f'"element-of-{key}"' in context]
+                self.assertEqual(named, [expected])
 
 
 class DriftReminder(unittest.TestCase):
