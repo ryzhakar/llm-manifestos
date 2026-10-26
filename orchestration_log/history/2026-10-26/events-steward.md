@@ -84,3 +84,4 @@
 2026-10-26T21:40+0200 | self | discovery | Claude Code 2.1.310 binary: settings autoCompactEnabled (default true), autoCompactWindow (size, "200k" or 200000; threshold = window minus the summary buffer), idleCompaction (false turns it off, true cannot turn it on); idle mode comes from flags tengu_sunny_locket and tengu_bubbly_canyon; env DISABLE_AUTO_COMPACT, CLAUDE_CODE_AUTO_COMPACT_WINDOW, CLAUDE_CODE_IDLE_COMPACT_MIN_TOKENS (default 200K, floor 100K); all four hooks stand down on UNHARNESS=1 via ensure-repo.sh unharness_stands_down
 2026-10-26T21:40+0200 | self | decision | queue 72-76: 4.0.1 hook fix first, then 4.1.0 `--autocompact`; spec agent writes both parts
 2026-10-26T22:00+0200 | peer:s4-spec | receipt | spec parts 4.0.1 and 4.1.0 appended (118 lines); decisions accepted as queue 77
+2026-10-26T22:03+0200 | self | discovery | local main stood at 9054353 (Oct 21), behind origin/main 59fc9c0; reset local main to origin/main before cutting feat/4.0.1-hook
