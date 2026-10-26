@@ -23,3 +23,4 @@
 2026-10-26T19:24+0200 | peer:gym/trainer-u3 | receipt | [notice] parser defect: a rejected config makes hooks bind nothing unseen; asks: hooks inject a one-line notice, block scalars or a check command, ship the check script
 2026-10-26T19:24+0200 | self | decision | queue 67 (hooks print one stdout line on config errors, superseding 22) and 68 (doctor is the one check command, no script) written; s3-spec asked to fold 67 into the spec
 2026-10-26T19:24+0200 | agent:s3-spec | receipt | queue 67 folded into spec part 4.0.0 (138 lines; Hook errors section; decision 13)
+2026-10-26T19:27+0200 | agent:u2-settings | receipt | U2 done: feat/4.0.0-settings 102a9b0..bd195de, report recon/2026-10-26/u2-report.md; checked: 303 tests pass, clean tree, 4 files touched; launch gained a defaulted read_file parameter (review item)
