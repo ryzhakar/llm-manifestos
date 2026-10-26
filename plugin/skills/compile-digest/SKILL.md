@@ -55,7 +55,7 @@ Name each demand dropped on purpose, whether the cap or a conflict forced the dr
 </check-against-the-source>
 
 <write-the-file>
-Write the body alone, as paragraphs and lists, to `.manifestos/digests/<stem>.md` beside the config, creating the folder; never add a header, a frontmatter, or a title.
+Write the body alone, as paragraphs and lists, to `.manifestos/digests/<stem>.md` in the project folder, creating the folder; never add a header, a frontmatter, or a title.
 Report the file's path and its word count from `wc -w` on the file; never print its text into the conversation.
 Stop at the digest and its stamp; never write an eval record or run a gate.
 </write-the-file>
