@@ -201,7 +201,23 @@ def _split_owner_settings(words: list[str], read_file: Callable[[str], str]) -> 
 
 
 def _owner_object(value: str, read_file: Callable[[str], str]) -> dict:
-    return json.loads(value)
+    """Return the object in the value read as JSON text when it opens with a brace, else as a file path."""
+    text = value if value.lstrip().startswith("{") else _file_text(value, read_file)
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        parsed = None
+    if not isinstance(parsed, dict):
+        raise UnharnessError(f"{SETTINGS_FLAG} {value} is not a JSON object")
+    return parsed
+
+
+def _file_text(path: str, read_file: Callable[[str], str]) -> str:
+    try:
+        return read_file(path)
+    except (OSError, UnicodeDecodeError) as error:
+        reason = error.strerror if isinstance(error, OSError) and error.strerror else str(error)
+        raise UnharnessError(f"{SETTINGS_FLAG} file {path} cannot be read: {reason}") from error
 
 
 def _flag_words(switch: Switch) -> list[str]:

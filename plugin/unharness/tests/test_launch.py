@@ -1,6 +1,7 @@
 import json
 import os
 import pty
+import re
 import shlex
 import stat
 from hashlib import sha256
@@ -427,3 +428,31 @@ def test_an_owner_settings_flag_leaves_the_arguments_and_passes_one_merged_setti
     assert argv.count("--settings") == 1
     assert settings_of(argv) == {"model": "opus", **DEFAULT_SETTINGS}
     assert err == ""
+
+
+def test_an_owner_settings_value_that_is_not_json_text_is_a_file_read_as_utf_8_json(tmp_path, capsys):
+    paths = []
+    argv, _ = launched_with(["--settings", "owner.json"], tmp_path, capsys, lambda path: paths.append(path) or '{"model":"opus"}')
+
+    assert paths == ["owner.json"]
+    assert settings_of(argv) == {"model": "opus", **DEFAULT_SETTINGS}
+
+
+def test_an_owner_settings_text_with_leading_spaces_is_json_not_a_file(tmp_path, capsys):
+    argv, _ = launched_with(["--settings", ' {"model":"opus"}'], tmp_path, capsys)
+
+    assert settings_of(argv)["model"] == "opus"
+
+
+def test_an_unreadable_owner_settings_file_stops_launch_with_the_reason(tmp_path, capsys):
+    def unreadable(path: str) -> str:
+        raise OSError("No such file or directory")
+
+    with pytest.raises(UnharnessError, match="^--settings file owner.json cannot be read: No such file or directory$"):
+        launched_with(["--settings", "owner.json"], tmp_path, capsys, unreadable)
+
+
+@pytest.mark.parametrize(("value", "file_text"), [('{"a":', None), (" [1]", None), ("owner.json", "[1]"), ("owner.json", "7"), ("owner.json", '{"a":')])
+def test_owner_settings_that_are_no_json_object_stop_launch(value, file_text, tmp_path, capsys):
+    with pytest.raises(UnharnessError, match=f"^--settings {re.escape(value)} is not a JSON object$"):
+        launched_with(["--settings", value], tmp_path, capsys, lambda path: file_text)
