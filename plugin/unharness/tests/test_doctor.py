@@ -30,6 +30,10 @@ def record_installed(login: Path, **versions: str) -> None:
     write(login / "plugins" / "installed_plugins.json", json.dumps({"version": 2, "plugins": plugins}))
 
 
+MANIFESTO_PLUGIN_VERSION = "4.0.1"
+MANIFESTO_PLUGIN_NOTE = "under unharness its subagent hook binds subagents unless launch --no-hooks"
+
+
 @pytest.fixture
 def host(tmp_path, monkeypatch) -> Path:
     """A fake host: claude, uv, and uvx stubs alone on PATH, and a login recording the manifesto plugin."""
@@ -38,7 +42,7 @@ def host(tmp_path, monkeypatch) -> Path:
     install_stub(bin_folder, "uv", STUB_SILENT)
     install_stub(bin_folder, "uvx", STUB_SILENT)
     login = tmp_path / "login"
-    record_installed(login, manifesto="4.0.1")
+    record_installed(login, manifesto=MANIFESTO_PLUGIN_VERSION)
     monkeypatch.setenv("PATH", str(bin_folder))
     monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(login))
     return tmp_path
@@ -60,7 +64,7 @@ def test_a_missing_config_fails_and_leaves_only_the_three_checks_that_need_no_co
     assert lines[1].startswith(f"FAIL config: no config: tried {host / 'project' / '.manifestos/config.yaml'}")
     assert lines[2] == f"OK claude: {host / 'bin' / 'claude'} {TESTED_CLAUDE}"
     assert lines[-2] == f"OK uv: {host / 'bin' / 'uv'} {host / 'bin' / 'uvx'}"
-    assert lines[-1] == "OK manifesto plugin: 4.0.1; under unharness its subagent hook binds subagents unless launch --no-hooks"
+    assert lines[-1] == f"OK manifesto plugin: {MANIFESTO_PLUGIN_VERSION}; {MANIFESTO_PLUGIN_NOTE}"
 
 
 @pytest.fixture
@@ -151,11 +155,10 @@ def test_the_newest_recorded_manifesto_version_counts_when_several_scopes_record
 
     _, lines = doctor(capsys, *missing_config)
 
-    assert finding(lines, "manifesto plugin") == "OK manifesto plugin: 4.10.0; under unharness its subagent hook binds subagents unless launch --no-hooks"
+    assert finding(lines, "manifesto plugin") == f"OK manifesto plugin: 4.10.0; {MANIFESTO_PLUGIN_NOTE}"
 
 
 CONFIG = "you:\n  - name: dry\n    purpose: one home\n  - name: write-well\n    source: skill agent-conduct:write-well\n"
-MANIFESTO_PLUGIN_VERSION = "4.0.1"
 SKILL_PLUGIN_VERSION = "1.10.0"
 
 
@@ -815,13 +818,13 @@ def test_a_malformed_installed_plugins_file_counts_as_no_record_instead_of_crash
 
 def test_an_unusable_record_of_one_plugin_leaves_the_records_of_the_others_standing(host, missing_config, capsys):
     write(host / "login" / "plugins" / "installed_plugins.json", json.dumps({"plugins": {
-        "manifesto@marketplace": [{"version": "4.0.1"}],
+        "manifesto@marketplace": [{"version": MANIFESTO_PLUGIN_VERSION}],
         "other@marketplace": [{"scope": "user"}, 3],
     }}))
 
     _, lines = doctor(capsys, *missing_config)
 
-    assert finding(lines, "manifesto plugin") == "OK manifesto plugin: 4.0.1; under unharness its subagent hook binds subagents unless launch --no-hooks"
+    assert finding(lines, "manifesto plugin") == f"OK manifesto plugin: {MANIFESTO_PLUGIN_VERSION}; {MANIFESTO_PLUGIN_NOTE}"
 
 
 def test_a_uvx_without_uv_prints_the_one_path_found(host, missing_config, capsys):
