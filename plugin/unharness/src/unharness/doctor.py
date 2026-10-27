@@ -63,6 +63,7 @@ from unharness.switches import Switch, choose_version, newest_version, parse_ver
 
 MINIMUM_MANIFESTO_VERSION = "4.0.1"
 SUBAGENT_HOOK_NOTE = "under unharness its subagent hook binds subagents unless launch --no-hooks"
+SUBAGENT_HOOK_FLOOR_REASON = "the first version whose subagent hook binds under unharness"
 INSTALLED_PLUGINS_FILE = Path("plugins") / "installed_plugins.json"
 VERSION_FLAG = "--version"
 VERSION_TIMEOUT_SECONDS = 10
@@ -354,7 +355,7 @@ def _manifesto_plugin_finding(login: Path) -> Finding:
         return Finding(Status.FAIL, name, f"absent from {login / INSTALLED_PLUGINS_FILE}")
     newest = max(versions, key=version_key)
     if version_key(newest) < version_key(MINIMUM_MANIFESTO_VERSION):
-        return Finding(Status.FAIL, name, f"{newest} is below {MINIMUM_MANIFESTO_VERSION}, the first version whose subagent hook binds under unharness")
+        return Finding(Status.FAIL, name, f"{newest} is below {MINIMUM_MANIFESTO_VERSION}, {SUBAGENT_HOOK_FLOOR_REASON}")
     return Finding(Status.OK, name, f"{newest}; {SUBAGENT_HOOK_NOTE}")
 
 
