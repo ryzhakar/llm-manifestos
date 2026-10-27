@@ -102,7 +102,7 @@ class SessionStartSources(unittest.TestCase):
         self.assertIn('"write-well" is part of your constitution \u2014 read it from skill agent-conduct:write-well.', r.stdout)
 
     def test_a_bare_item_with_a_colon_is_a_name_and_crashes_nothing(self):
-        for script in ("session-start.sh", "post-compact.sh", "drift-reminder.sh"):
+        for script in MAIN_SESSION_HOOKS:
             r = run_hook(script, "you:\n  - agent-conduct:write-well\n")
             self.assertEqual(r.returncode, 0, script + r.stderr)
             self.assertIn("agent-conduct:write-well", r.stdout, script)
@@ -153,7 +153,7 @@ class ConfigProblems(unittest.TestCase):
         self.assertIn("old layout in", r.stderr)
 
     def test_python_chatter_on_stderr_does_not_corrupt_a_valid_config(self):
-        for script in ("session-start.sh", "post-compact.sh", "drift-reminder.sh"):
+        for script in MAIN_SESSION_HOOKS:
             r = run_hook(script, HAPPY, PYTHONVERBOSE="1")
             self.assertEqual(r.returncode, 0, script)
             self.assertIn("first-principles", r.stdout, script)
