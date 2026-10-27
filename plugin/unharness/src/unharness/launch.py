@@ -145,7 +145,7 @@ def _autocompact_tokens(size: str | None) -> int | None:
     matched = SIZE_PATTERN.fullmatch(size)
     lowest, highest = AUTOCOMPACT_THOUSANDS
     if matched is None or not lowest <= int(matched.group(1)) <= highest:
-        raise UnharnessError(f"--autocompact takes a whole number of thousands of tokens from {lowest} to {highest}, such as 500k; got {size}")
+        raise UnharnessError(f"{VALUED_OPTION} takes a whole number of thousands of tokens from {lowest} to {highest}, such as 500k; got {size}")
     return int(matched.group(1)) * TOKENS_PER_THOUSAND
 
 

@@ -40,7 +40,7 @@ from unharness.launch import (
 )
 from unharness.resolve import login_dir, manifesto_elements, manifesto_plugin_dir, resolve_stack
 from unharness.session import load_preamble, read_if_present
-from unharness.switches import shipped_switches, strip_table
+from unharness.switches import VALUED_OPTION, shipped_switches, strip_table
 
 PROMPT_VERB = "prompt"
 STACK_VERB = "stack"
@@ -49,7 +49,6 @@ LAUNCH_VERB = "launch"
 DOCTOR_VERB = "doctor"
 SWITCHES_VERB = "switches"
 CLAUDE_VERSION_FLAG = "--claude-version"
-AUTOCOMPACT_FLAG = "--autocompact"
 MINIFIED_FLAG = "--minified"
 AGENT_FLAG = "--agent"
 DIFF_FLAG = "--diff"
@@ -94,7 +93,7 @@ def _run(argv: list[str]) -> int:
     launch_parser.add_argument("prompt", nargs="?")
     for flag in ("--keep-claude-md", "--keep-web-search", "--no-hooks"):
         launch_parser.add_argument(flag, action="store_true")
-    launch_parser.add_argument(AUTOCOMPACT_FLAG)
+    launch_parser.add_argument(VALUED_OPTION)
     launch_parser.add_argument(CLAUDE_VERSION_FLAG)
     verbs.add_parser(SWITCHES_VERB)
     doctor_parser = verbs.add_parser(DOCTOR_VERB)
