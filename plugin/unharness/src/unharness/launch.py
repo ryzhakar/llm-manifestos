@@ -203,7 +203,7 @@ def _with_passed_value(switch: Switch, options: Options, autocompact_tokens: int
 
 
 def _option_given(switch: Switch, options: Options) -> bool:
-    return switch.option is not None and getattr(options, OPTION_ATTRIBUTES[switch.option])
+    return switch.option is not None and bool(getattr(options, OPTION_ATTRIBUTES[switch.option]))
 
 
 def _strip_environment(passed: Sequence[Switch]) -> dict[str, str]:
