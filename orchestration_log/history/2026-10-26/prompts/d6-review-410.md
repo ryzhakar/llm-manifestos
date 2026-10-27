@@ -1,0 +1,7 @@
+# D6 — review of unharness 4.1.0
+
+1. Role: you review, read-only, release 4.1.0 on branch feat/4.1.0-autocompact in /Users/ryzhakar/LLM_MANIFESTOS.worktrees/autocompact, head ad4b1ba, base main 59fc9c0. Change no file there.
+2. Context: the spec part "4.1.0" in /Users/ryzhakar/LLM_MANIFESTOS/orchestration_log/history/2026-10-23/spec-unharness.md is the law. The diff: `git -C /Users/ryzhakar/LLM_MANIFESTOS.worktrees/autocompact diff 59fc9c0 ad4b1ba`. Unit report: /Users/ryzhakar/LLM_MANIFESTOS/orchestration_log/recon/2026-10-26/u7-report.md and the binary check autocompact-binary-check.md beside it. Gates: `uv run --project plugin/unharness pytest -q plugin/unharness` (444 pass) and `python3 -m unittest discover -s plugin/tests` (30 OK), both run in the worktree. Known items to judge: the commit split by green change rather than per step; ASCII-only digits in SIZE; the reworded "equals the one 3.6.1 printed" sentence. The branch will be rebased onto 4.0.1 (hook, doctor floor) before release; judge it on its own base.
+3. Task: per your agent definition. The spec-reviewer checks every requirement of the part against code, tests, and docs; the code-quality-reviewer checks quality. Number each finding, give file and line, severity (blocker, major, minor), and the fix in one sentence.
+4. Output: your report file at /Users/ryzhakar/LLM_MANIFESTOS/orchestration_log/recon/2026-10-26/d6-<your role>.md.
+5. Reply: the verdict and the count of findings by severity.

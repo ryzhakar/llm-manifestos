@@ -85,3 +85,12 @@
 2026-10-26T21:40+0200 | self | decision | queue 72-76: 4.0.1 hook fix first, then 4.1.0 `--autocompact`; spec agent writes both parts
 2026-10-26T22:00+0200 | peer:s4-spec | receipt | spec parts 4.0.1 and 4.1.0 appended (118 lines); decisions accepted as queue 77
 2026-10-26T22:03+0200 | self | discovery | local main stood at 9054353 (Oct 21), behind origin/main 59fc9c0; reset local main to origin/main before cutting feat/4.0.1-hook
+2026-10-26T22:05+0200 | self | delegation | u6-hook (4.0.1, worktree hook) and u7-autocompact (4.1.0, worktree autocompact, rebased onto 4.0.1 later) dispatched in parallel
+2026-10-26T22:36+0200 | peer:u6-hook | receipt | 4.0.1 done: 53c96d9..6c3d21d, pytest 406, unittest 31; report transcribed to recon/2026-10-26/u6-report.md
+2026-10-27T00:10+0200 | peer:u7-autocompact | receipt | 4.1.0 done at ad4b1ba (8 commits), pytest 444, unittest 30, binary check passes at all five versions; reports in recon/2026-10-26/u7-report.md and autocompact-binary-check.md
+2026-10-27T00:20+0200 | peer:d5-spec | receipt | 4.0.1 spec review PASS, 0/0/0 (recon/2026-10-26/d5-spec.md)
+2026-10-27T09:22+0200 | peer:d6-spec | receipt | 4.1.0 spec review PASS, 0/0/0 (recon/2026-10-26/d6-spec.md)
+2026-10-27T09:40+0200 | peer:d5-quality | receipt | 4.0.1 quality: with fixes, 0 blocker / 1 major / 2 minor (duplicated test literals, inline FAIL reason); sent to u6-hook to fix
+2026-10-27T09:45+0200 | peer:d6-quality | receipt | 4.1.0 quality: with fixes, 0/5/4 (option name in three places, return type, names, docstring, fixture); sent to u7-autocompact to fix
+2026-10-27T09:50+0200 | peer:u6-hook | receipt | d5 quality fixes 684133c, 9a2e0cf, 9748848; gates 406 / 31; re-review sent to d5-quality
+2026-10-27T09:55+0200 | peer:d5-spec,d5-quality | receipt | 4.0.1 delta re-reviews: spec PASS (d5-spec-2.md), quality Ready to merge Yes 0/0/0 (d5-quality-2.md)
