@@ -151,6 +151,7 @@ def _default_cell(switch: Switch) -> str:
 
 
 def _given_text(given: Any) -> str:
+    """Return the given value as the table shows it, the size placeholder bare and any other value as JSON."""
     return SIZE_PLACEHOLDER if given == SIZE_PLACEHOLDER else json.dumps(given)
 
 
