@@ -39,10 +39,7 @@ def text_of(*entries: dict) -> str:
 
 
 def test_the_shipped_registry_holds_the_thirteen_switches_3_6_1_passes_then_the_three_compaction_settings():
-    switches = shipped_switches()
-
-    assert [switch.name for switch in switches] == SHIPPED_NAMES
-    assert all(switch.verified == ("2.1.309",) for switch in switches)
+    assert [switch.name for switch in shipped_switches()] == SHIPPED_NAMES
 
 
 def test_every_shipped_entry_is_verified_at_the_same_versions_so_no_version_drops_a_switch():
