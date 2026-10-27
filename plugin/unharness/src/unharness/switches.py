@@ -113,7 +113,8 @@ def _switch(index: int, entry: Any) -> Switch:
     if entry["kind"] not in KINDS:
         raise _refusal(index, 'kind must be "env", "flag", or "settings"')
     option = _option(index, entry["option"])
-    _refuse_misplaced_given(index, entry, option)
+    if option == VALUED_OPTION:
+        _refuse_unpaired_value(index, entry)
     return Switch(
         name=_text(index, entry, "name"),
         kind=entry["kind"],
@@ -124,7 +125,7 @@ def _switch(index: int, entry: Any) -> Switch:
         verified=_versions(index, entry["verified"]),
         default=_boolean(index, entry, "default"),
         option=option,
-        given=entry.get(GIVEN_KEY),
+        given=_given(index, entry, option),
     )
 
 
@@ -185,16 +186,21 @@ def _option(index: int, option: Any) -> str | None:
     return option
 
 
-def _refuse_misplaced_given(index: int, entry: dict, option: str | None) -> None:
-    """Refuse given outside an entry of the valued option, and an entry of that option lacking given or pairing value and default wrongly."""
+def _given(index: int, entry: dict, option: str | None) -> Any:
+    """Return the value an entry of the valued option passes when the option is given, None for any other entry."""
     if option != VALUED_OPTION:
         if GIVEN_KEY in entry:
             raise _refusal(index, f"given belongs only to an entry whose option is {VALUED_OPTION}")
-        return
+        return None
     if GIVEN_KEY not in entry:
         raise _refusal(index, "given is missing")
     if entry[GIVEN_KEY] is None:
         raise _refusal(index, "given must not be null")
+    return entry[GIVEN_KEY]
+
+
+def _refuse_unpaired_value(index: int, entry: dict) -> None:
+    """Refuse an entry of the valued option whose value is null other than exactly when its default is false."""
     if (entry["value"] is None) == _boolean(index, entry, "default"):
         raise _refusal(index, "value must be null exactly when default is false")
 
