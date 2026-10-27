@@ -22,23 +22,15 @@ DEFAULT_ENVIRONMENT = [
     "CLAUDE_CODE_TOTAL_TOKENS_REMINDER=off",
     "UNHARNESS=1",
 ]
-DEFAULT_SETTINGS = {
+BASE_SETTINGS = {
     "includeGitInstructions": False,
     "attribution": {"commit": "", "pr": ""},
     "autoMemoryEnabled": False,
     "outputStyle": "default",
-    "autoCompactEnabled": False,
-    "idleCompaction": False,
 }
-SETTINGS_WITH_NO_HOOKS = {
-    "includeGitInstructions": False,
-    "attribution": {"commit": "", "pr": ""},
-    "autoMemoryEnabled": False,
-    "outputStyle": "default",
-    "disableAllHooks": True,
-    "autoCompactEnabled": False,
-    "idleCompaction": False,
-}
+COMPACTION_OFF = {"autoCompactEnabled": False, "idleCompaction": False}
+DEFAULT_SETTINGS = {**BASE_SETTINGS, **COMPACTION_OFF}
+SETTINGS_WITH_NO_HOOKS = {**BASE_SETTINGS, "disableAllHooks": True, **COMPACTION_OFF}
 PROMPT = "You are bound.\n"
 TERMINAL = "/dev/ttys042"
 COMMAND_AT_2_1_309 = (
