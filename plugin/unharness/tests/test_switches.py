@@ -99,6 +99,7 @@ def test_a_valid_text_loads_each_kind_with_its_value():
     ([entry(default=None)], "switches.json entry 0: default must be true or false"),
     ([entry(option="--other")], 'switches.json entry 0: option must be null, "--keep-claude-md", "--keep-web-search", "--no-hooks", or "--autocompact"'),
     ([entry(kind="settings", value=False, option="--autocompact")], "switches.json entry 0: given is missing"),
+    ([entry(kind="settings", value=False, given=None, option="--autocompact")], "switches.json entry 0: given must not be null"),
     ([entry(given=True)], "switches.json entry 0: given belongs only to an entry whose option is --autocompact"),
     ([entry(kind="settings", value=None, given=True, option="--autocompact")], "switches.json entry 0: value must be null exactly when default is false"),
     ([entry(kind="settings", value=False, given=True, default=False, option="--autocompact")], "switches.json entry 0: value must be null exactly when default is false"),

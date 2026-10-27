@@ -193,6 +193,8 @@ def _refuse_misplaced_given(index: int, entry: dict, option: str | None) -> None
         return
     if GIVEN_KEY not in entry:
         raise _refusal(index, "given is missing")
+    if entry[GIVEN_KEY] is None:
+        raise _refusal(index, "given must not be null")
     if (entry["value"] is None) == _boolean(index, entry, "default"):
         raise _refusal(index, "value must be null exactly when default is false")
 
