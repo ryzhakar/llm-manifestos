@@ -521,7 +521,7 @@ def test_the_owner_settings_pass_alone_when_no_settings_entry_passes(tmp_path, c
     assert commands[0] == ["fake", "--system-prompt-file", str(cached_prompt(tmp_path)), "--settings", '{"model":"opus"}']
 
 
-@pytest.mark.parametrize("size", ["99", "1001k", "0", "500m", "5.5k", "k", "-5", " 500k", ""])
+@pytest.mark.parametrize("size", ["99", "1001k", "0", "500m", "5.5k", "k", "-5", " 500k", "", "\uff15\uff10\uff10"])
 def test_a_size_outside_100k_to_1000k_stops_launch_before_any_version_run_or_cache_file(size, tmp_path):
     message = f"--autocompact takes a whole number of thousands of tokens from 100 to 1000, such as 500k; got {size}"
     with pytest.raises(UnharnessError) as refusal:
