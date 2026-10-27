@@ -94,3 +94,4 @@
 2026-10-27T09:45+0200 | peer:d6-quality | receipt | 4.1.0 quality: with fixes, 0/5/4 (option name in three places, return type, names, docstring, fixture); sent to u7-autocompact to fix
 2026-10-27T09:50+0200 | peer:u6-hook | receipt | d5 quality fixes 684133c, 9a2e0cf, 9748848; gates 406 / 31; re-review sent to d5-quality
 2026-10-27T09:55+0200 | peer:d5-spec,d5-quality | receipt | 4.0.1 delta re-reviews: spec PASS (d5-spec-2.md), quality Ready to merge Yes 0/0/0 (d5-quality-2.md)
+2026-10-27T10:05+0200 | self | release | unharness 4.0.1 shipped: rebased onto session/long-run, gates 406 / 31, readme unchanged, plugin validate OK, lock OK, build 4.0.1; subagent-start.sh under UNHARNESS=1 emits its binding JSON, session-start prints nothing; main a48bcdc, tags v4.0.1 + pypi-4.0.1, publish run 40480880769 success; no peer notified (owner order)
