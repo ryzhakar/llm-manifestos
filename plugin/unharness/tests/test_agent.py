@@ -27,7 +27,7 @@ def project(tmp_path) -> Path:
 
 def documents_of(project: Path, login: Path, key: str):
     config = load(project / ".manifestos" / "config.yaml")
-    return resolve_stack(config.subagents[key], config.directory, config.registry, login)
+    return resolve_stack(config.subagents[key].stack, config.directory, config.registry, login)
 
 
 def write_agent_files(project: Path, login: Path, key: str, suffix: str = "") -> None:

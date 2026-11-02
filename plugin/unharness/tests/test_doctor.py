@@ -242,7 +242,7 @@ WRITING_SKILL = "/compile-commitments"
 
 def write_session_files(project: Path, login: Path, names: tuple[str, ...], body: str = "Bound.\n", key: str | None = None) -> None:
     config = load(project)
-    elements = config.you if key is None else config.subagents[key]
+    elements = config.you.stack if key is None else config.subagents[key].stack
     block = stack_block(resolve_stack(elements, config.directory, config.registry, login))
     for name in names:
         write(project.parent.parent / name, f"{block}\n\n{body}")
@@ -487,7 +487,7 @@ def plugin_folder(host: Path) -> Path:
 def stamp(host: Path, project: Path, folder: Path, *stems: str) -> None:
     """Write the index entries for the stems in the folder's index, with the manifestos' current hashes."""
     config = load(project)
-    hashes = {document.name: document.sha256 for document in resolve_stack(config.you, config.directory, config.registry, host / "login")}
+    hashes = {document.name: document.sha256 for document in resolve_stack(config.you.stack, config.directory, config.registry, host / "login")}
     index_path = folder / "index.json"
     index = json.loads(index_path.read_text()) if index_path.exists() else {}
     for stem in stems:

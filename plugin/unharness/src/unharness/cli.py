@@ -200,9 +200,9 @@ def _output(arguments: argparse.Namespace, login: Path) -> str:
 def _elements_to_bind(config: Config, agent_type: str | None) -> tuple[list[Element], str | None]:
     """Return the elements to bind and the subagents key they came from, None for the main stack."""
     if agent_type is None:
-        if not config.you:
+        if not config.you.stack:
             raise UnharnessError(EMPTY_STACK_MESSAGE)
-        return config.you, None
+        return config.you.stack, None
     keys = list(config.subagents)
     match = subagent_match(agent_type, keys)
     if match is None:
@@ -210,9 +210,9 @@ def _elements_to_bind(config: Config, agent_type: str | None) -> tuple[list[Elem
     key = match.key
     if match.by_default:
         print(f"unharness: {agent_type} matches no subagents key; using other:, the default stack", file=sys.stderr)
-    if not config.subagents[key]:
+    if not config.subagents[key].stack:
         raise UnharnessError(empty_key_message(key))
-    return config.subagents[key], key
+    return config.subagents[key].stack, key
 
 
 def _session_files(key: str | None, minified: bool) -> SessionFiles:

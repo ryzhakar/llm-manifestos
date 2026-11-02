@@ -69,9 +69,26 @@ class Element:
 
 
 @dataclass(frozen=True)
+class Block:
+    """A named instruction block whose text is one line or the file at a path, exactly one of the two set."""
+
+    name: str
+    line: str | None
+    file: str | None
+
+
+@dataclass(frozen=True)
+class Agent:
+    """An agent's stack of elements and its blocks in declaration order."""
+
+    stack: list[Element]
+    blocks: list[Block]
+
+
+@dataclass(frozen=True)
 class Config:
-    you: list[Element]
-    subagents: dict[str, list[Element]]
+    you: Agent
+    subagents: dict[str, Agent]
     directory: Path
     registry: Path | None
 
@@ -100,8 +117,8 @@ def main(argv: list[str]) -> int:
     except UnharnessError as error:
         return fail(error)
     print(json.dumps({
-        "you": [asdict(element) for element in config.you],
-        "subagents": {role: [asdict(element) for element in elements] for role, elements in config.subagents.items()},
+        "you": [asdict(element) for element in config.you.stack],
+        "subagents": {role: [asdict(element) for element in agent.stack] for role, agent in config.subagents.items()},
         "directory": str(config.directory),
         "registry": str(config.registry) if config.registry else "",
     }))
@@ -127,8 +144,8 @@ def load(path: Path) -> Config:
     for key in roles:
         _require_folder_name(key)
     return Config(
-        you=_elements(root.get("you") or [], "you"),
-        subagents={role: _elements(items or [], f"subagents.{role}") for role, items in roles.items()},
+        you=Agent(_elements(root.get("you") or [], "you"), []),
+        subagents={role: Agent(_elements(items or [], f"subagents.{role}"), []) for role, items in roles.items()},
         directory=project,
         registry=(project / root["manifesto_dir"]).resolve() if root.get("manifesto_dir") else None,
     )

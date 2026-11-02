@@ -57,13 +57,13 @@ class World:
 
     def write_session_files(self) -> None:
         config = load(self.config)
-        stack = stack_block(resolve_stack(config.you, config.directory, config.registry, self.login))
+        stack = stack_block(resolve_stack(config.you.stack, config.directory, config.registry, self.login))
         write(self.project / ".manifestos/interplay.md", f"{stack}\n\n<interplay>\nAgree.\n</interplay>\n")
         write(self.project / ".manifestos/commitments.md", f"{stack}\n\n<commitments>\nI must, and I will.\n</commitments>\n")
 
     def write_minified_files(self) -> None:
         config = load(self.config)
-        stack = stack_block(resolve_stack(config.you, config.directory, config.registry, self.login))
+        stack = stack_block(resolve_stack(config.you.stack, config.directory, config.registry, self.login))
         write(self.project / ".manifestos/interplay.min.md", f"{stack}\n\n<interplay>\nAgree, briefly.\n</interplay>\n")
         write(self.project / ".manifestos/commitments.min.md", f"{stack}\n\n<commitments>\nI must, briefly.\n</commitments>\n")
 
@@ -560,9 +560,9 @@ def test_select_cover_returns_the_chosen_stacks_and_the_singles_they_leave(world
     digest_all_singles(world)
     world.digest("alpha+beta", "AB")
     config = load(world.config)
-    documents = resolve_stack(config.you, config.directory, config.registry, world.login)
+    documents = resolve_stack(config.you.stack, config.directory, config.registry, world.login)
 
-    cover = select_cover(config.you, documents, config.directory, world.plugin, DigestMode(stacks=True, overlap=False))
+    cover = select_cover(config.you.stack, documents, config.directory, world.plugin, DigestMode(stacks=True, overlap=False))
 
     assert [digest.stem for digest in cover.stacks] == ["alpha+beta"]
     assert sorted(cover.singles) == ["delta", "gamma"]
@@ -686,7 +686,7 @@ REVIEWER_TAIL = "\nsubagents:\n  reviewer:\n    - alpha\n    - beta\n"
 def agent_prompt(world, monkeypatch, capsys, *flags: str) -> tuple[int, str, str]:
     monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(world.login))
     config = load(world.config)
-    stack = stack_block(resolve_stack(config.subagents["reviewer"], config.directory, config.registry, world.login))
+    stack = stack_block(resolve_stack(config.subagents["reviewer"].stack, config.directory, config.registry, world.login))
     folder = world.project / ".manifestos" / "agents" / "reviewer"
     write(folder / "interplay.md", f"{stack}\n\n<interplay>\nAgree.\n</interplay>\n")
     write(folder / "commitments.md", f"{stack}\n\n<commitments>\nI will.\n</commitments>\n")

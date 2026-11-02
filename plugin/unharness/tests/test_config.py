@@ -7,6 +7,7 @@ import pytest
 from helpers import write
 
 from unharness.config import (
+    Agent,
     Config,
     Element,
     UnharnessError,
@@ -31,7 +32,7 @@ def test_a_bare_string_names_a_registry_manifesto(tmp_path):
     config = load(write_config(tmp_path, "you:\n  - dry\n  - name: kiss\n    purpose: the code\n"))
 
     assert config == Config(
-        you=[Element("dry", None, None, None), Element("kiss", "the code", None, None)],
+        you=Agent([Element("dry", None, None, None), Element("kiss", "the code", None, None)], []),
         subagents={},
         directory=tmp_path,
         registry=None,
@@ -47,15 +48,15 @@ def test_subagent_roles_and_manifesto_dir_load_beside_the_you_stack(tmp_path):
 
     assert config.registry == Path("/plugins/manifesto")
     assert config.subagents == {
-        "implementer": [Element("kiss", None, None, None), Element("yagni", None, None, None)],
-        "other": [Element("dry", None, None, None)],
+        "implementer": Agent([Element("kiss", None, None, None), Element("yagni", None, None, None)], []),
+        "other": Agent([Element("dry", None, None, None)], []),
     }
 
 
 def test_a_root_list_is_the_you_stack(tmp_path):
     config = load(write_config(tmp_path, "- dry\n- kiss\n"))
 
-    assert [element.name for element in config.you] == ["dry", "kiss"]
+    assert [element.name for element in config.you.stack] == ["dry", "kiss"]
     assert config.subagents == {}
     assert config.registry is None
 
@@ -69,7 +70,7 @@ def test_each_source_type_is_kept_as_written_and_a_file_is_named_by_its_stem(tmp
         "  - source: file notes/house-rules.md\n"
     )))
 
-    assert config.you == [
+    assert config.you.stack == [
         Element("write-well", None, "skill", "agent-conduct:write-well"),
         Element("mine", None, "skill", "my-skill"),
         Element("kiss", "the code", "manifesto", "kiss"),
@@ -78,8 +79,8 @@ def test_each_source_type_is_kept_as_written_and_a_file_is_named_by_its_stem(tmp
 
 
 def test_null_items_are_dropped_and_an_empty_file_is_an_empty_stack(tmp_path):
-    assert load(write_config(tmp_path, "you:\n  - ~\n  - dry\n  -\n")).you == [Element("dry", None, None, None)]
-    assert load(write_config(tmp_path, "# nothing here\n")) == Config([], {}, tmp_path, None)
+    assert load(write_config(tmp_path, "you:\n  - ~\n  - dry\n  -\n")).you.stack == [Element("dry", None, None, None)]
+    assert load(write_config(tmp_path, "# nothing here\n")) == Config(Agent([], []), {}, tmp_path, None)
 
 
 def test_an_element_with_no_name_and_no_file_source_stops_the_load(tmp_path):
@@ -96,7 +97,7 @@ def test_trailing_comments_are_not_part_of_a_value(tmp_path):
     )))
 
     assert config.registry == Path("/plugins/manifesto")
-    assert config.you == [Element("dry", "one home", "skill", "a:b")]
+    assert config.you.stack == [Element("dry", "one home", "skill", "a:b")]
 
 
 def test_a_config_that_is_not_a_list_of_elements_stops_the_load(tmp_path):
@@ -111,13 +112,13 @@ def test_a_config_that_is_not_a_list_of_elements_stops_the_load(tmp_path):
 def test_a_colon_without_a_space_after_it_is_part_of_a_bare_name(tmp_path):
     config = load(write_config(tmp_path, "you:\n  - agent-conduct:write-well\n  - name: a\n    source: skill b:c\n"))
 
-    assert config.you == [Element("agent-conduct:write-well", None, None, None), Element("a", None, "skill", "b:c")]
+    assert config.you.stack == [Element("agent-conduct:write-well", None, None, None), Element("a", None, "skill", "b:c")]
 
 
 def test_without_a_config_file_the_active_manifestos_section_of_claude_md_is_the_config(tmp_path):
     (tmp_path / "CLAUDE.md").write_text("# Notes\n\n## Active Manifestos\n- dry\n- kiss\n\n## Other\n- yagni\n")
 
-    assert [element.name for element in load(tmp_path / ".manifestos/config.yaml").you] == ["dry", "kiss"]
+    assert [element.name for element in load(tmp_path / ".manifestos/config.yaml").you.stack] == ["dry", "kiss"]
 
 
 def test_a_missing_config_names_every_place_it_looked(tmp_path):
@@ -200,7 +201,7 @@ def test_a_relative_manifesto_dir_resolves_once_against_the_config_folder(login,
     run = run_config_script("--json", "--project", str(path.parent.parent))
     with pytest.raises(UnharnessError) as failure:
         config = load(path)
-        resolve_stack(config.you, config.directory, config.registry, login)
+        resolve_stack(config.you.stack, config.directory, config.registry, login)
 
     assert json.loads(run.stdout)["registry"] == str(registry)
     assert str(failure.value) == f"element nope did not resolve; tried {registry / 'manifestos' / 'nope.md'}"
@@ -239,7 +240,7 @@ def test_a_block_scalar_as_a_list_item_stops_the_load_naming_the_line(tmp_path, 
 def test_a_value_that_merely_starts_with_a_fold_sign_still_reads_as_text(tmp_path):
     config = load(write_config(tmp_path, "you:\n  - name: dry\n    purpose: > 3 homes\n"))
 
-    assert config.you[0].purpose == "> 3 homes"
+    assert config.you.stack[0].purpose == "> 3 homes"
 
 
 CASCADE = [
@@ -387,6 +388,6 @@ def test_a_file_source_resolves_against_the_project_folder(login, tmp_path):
     write(tmp_path / "notes" / "rules.md", "Rules.\n")
     config = load(write_config(tmp_path, "you:\n  - source: file notes/rules.md\n"))
 
-    documents = resolve_stack(config.you, config.directory, config.registry, login)
+    documents = resolve_stack(config.you.stack, config.directory, config.registry, login)
 
     assert documents[0].text.strip() == "Rules."

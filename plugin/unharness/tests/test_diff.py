@@ -20,7 +20,7 @@ def project(tmp_path) -> Path:
 
 def current_lines(project: Path, login: Path, key: str | None = None) -> list[str]:
     config = load(project / ".manifestos" / "config.yaml")
-    elements = config.you if key is None else config.subagents[key]
+    elements = config.you.stack if key is None else config.subagents[key].stack
     return stack_block(resolve_stack(elements, config.directory, config.registry, login)).split("\n")[1:-1]
 
 

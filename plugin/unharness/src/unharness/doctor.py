@@ -124,22 +124,22 @@ def doctor(
         return [*layout, Finding(Status.FAIL, "config", str(error)), *host]
     plugin = manifesto_plugin_dir(config.registry, login)
     match = None if modes.agent is None else subagent_match(modes.agent, list(config.subagents))
-    outcomes = [_resolve_element(element, config, login) for element in config.you]
+    outcomes = [_resolve_element(element, config, login) for element in config.you.stack]
     documents = [document for _, document in outcomes]
     stack = None if not documents or None in documents else documents
     skills = [
         _skill_finding(element, config, login)
-        for element, document in zip(config.you, documents)
+        for element, document in zip(config.you.stack, documents)
         if document and _is_plugin_skill(element)
     ]
     mode, flag_error = _flagged_mode(modes)
     loads_you = modes.agent is None
     on_stack = [] if stack is None else [
-        *_digest_findings(config.you, stack, config.directory, plugin, mode, loads_you),
-        _cover_finding(config.you, stack, config.directory, plugin, mode, flag_error, loads_you),
+        *_digest_findings(config.you.stack, stack, config.directory, plugin, mode, loads_you),
+        _cover_finding(config.you.stack, stack, config.directory, plugin, mode, flag_error, loads_you),
         *_session_findings(stack, config.directory, modes, loads_you),
     ]
-    size = [] if stack is None else [_prompt_size_finding(config.you, stack, config.directory, plugin)]
+    size = [] if stack is None else [_prompt_size_finding(config.you.stack, stack, config.directory, plugin)]
     return [
         *layout,
         Finding(Status.OK, "config", str(config_path.resolve())),
@@ -206,7 +206,7 @@ def _agent_match_findings(agent_type: str | None, match: KeyMatch | None, keys: 
 
 def _subagent_findings(config: Config, login: Path, modes: Modes, matched: str | None) -> list[Finding]:
     """Report each subagents key's stack in config order; the matched key's problems fail where the flags load them."""
-    return [_subagent_finding(key, elements, config, login, modes, key == matched) for key, elements in config.subagents.items()]
+    return [_subagent_finding(key, agent.stack, config, login, modes, key == matched) for key, agent in config.subagents.items()]
 
 
 def _subagent_finding(key: str, elements: list[Element], config: Config, login: Path, modes: Modes, is_matched: bool) -> Finding:
