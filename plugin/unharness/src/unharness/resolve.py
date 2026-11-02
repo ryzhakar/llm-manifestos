@@ -52,7 +52,7 @@ def resolve_block(block: Block, agent: str, directory: Path) -> Document:
     """Return the agent's block as a Document without a purpose, its line or its file's text read as a file element's, stripped."""
     if block.file is None:
         return Document(block.name, None, block.line.strip())
-    path = directory / block.file
+    path = locate_block(block, directory)
     place = block_path(agent, block.name)
     if not path.is_file():
         raise UnharnessError(f"{place} did not resolve; tried {path}")
@@ -60,6 +60,11 @@ def resolve_block(block: Block, agent: str, directory: Path) -> Document:
     if not text:
         raise UnharnessError(f"{place} has no text in {path}")
     return Document(block.name, None, text)
+
+
+def locate_block(block: Block, directory: Path) -> Path:
+    """Return the file a file block names, against the project folder, as a file element's path resolves."""
+    return directory / block.file
 
 
 def _resolve_element(element: Element, directory: Path, registry: Path | None, login: Path) -> Document:

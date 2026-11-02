@@ -23,10 +23,13 @@ from unharness.config import (
     PROJECT_FOLDER,
     SKILL_SOURCE,
     TEXT_ENCODING,
+    Block,
     Config,
     Element,
     KeyMatch,
     UnharnessError,
+    agent_path,
+    block_path,
     empty_key_message,
     load,
     no_subagent_key_message,
@@ -54,7 +57,9 @@ from unharness.resolve import (
     PLUGIN_SKILL_SEPARATOR,
     Document,
     locate,
+    locate_block,
     manifesto_plugin_dir,
+    resolve_block,
     resolve_stack,
     version_key,
 )
@@ -73,6 +78,7 @@ UVX_BINARY = "uvx"
 MARKETPLACE_SEPARATOR = "@"
 STACKS_WITH_OVERLAP = DigestMode(stacks=True, overlap=True)
 NO_DIGESTS = "none"
+ONE_LINE = "one line"
 
 
 class Status(StrEnum):
@@ -124,6 +130,7 @@ def doctor(
         return [*layout, Finding(Status.FAIL, "config", str(error)), *host]
     plugin = manifesto_plugin_dir(config.registry, login)
     match = None if modes.agent is None else subagent_match(modes.agent, list(config.subagents))
+    matched = None if match is None else match.key
     outcomes = [_resolve_element(element, config, login) for element in config.you.stack]
     documents = [document for _, document in outcomes]
     stack = None if not documents or None in documents else documents
@@ -148,7 +155,8 @@ def doctor(
         *skills,
         *on_stack,
         *_agent_match_findings(modes.agent, match, list(config.subagents)),
-        *_subagent_findings(config, login, modes, None if match is None else match.key),
+        *_subagent_findings(config, login, modes, matched),
+        *_block_findings(config, loads_you, matched),
         _preamble_finding(config.directory),
         *host,
         *size,
@@ -224,6 +232,22 @@ def _subagent_finding(key: str, elements: list[Element], config: Config, login: 
             if problem:
                 return Finding(Status.FAIL if is_matched and pair == _loaded_pair(modes) else Status.WARN, name, problem)
     return Finding(Status.OK, name, f"{len(documents)} elements resolved; session files current")
+
+
+def _block_findings(config: Config, loads_you: bool, matched: str | None) -> list[Finding]:
+    """Report each block of you:, then of each subagents key in config order; a file problem fails for the agent prompt would load."""
+    agents = [(None, config.you, loads_you), *((key, agent, key == matched) for key, agent in config.subagents.items())]
+    return [_block_finding(block, agent_path(key), config.directory, loaded) for key, agent, loaded in agents for block in agent.blocks]
+
+
+def _block_finding(block: Block, agent: str, directory: Path, loaded: bool) -> Finding:
+    """Report the block by its path: one line, or the path of its file, else why its file cannot load."""
+    name = block_path(agent, block.name)
+    try:
+        resolve_block(block, agent, directory)
+    except UnharnessError as error:
+        return Finding(Status.FAIL if loaded else Status.WARN, name, str(error))
+    return Finding(Status.OK, name, ONE_LINE if block.file is None else str(locate_block(block, directory)))
 
 
 def _skill_finding(element: Element, config: Config, login: Path) -> Finding:

@@ -952,3 +952,69 @@ def test_no_switch_line_fails_whatever_the_version(host, missing_config, capsys,
 
     assert [line for line in lines if line.startswith("FAIL switch")] == []
     assert len([line for line in lines if line.startswith("WARN switch env")]) == 2
+
+
+BLOCKS_CONFIG = (
+    "you:\n  stack:\n    - name: dry\n      purpose: one home\n    - name: write-well\n      source: skill agent-conduct:write-well\n"
+    "  blocks:\n    tone: Answer in plain words.\n    reading:\n      file: .manifestos/blocks/reading.md\n"
+    "subagents:\n  implementer:\n    stack:\n      - name: dry\n    blocks:\n      scope:\n        file: scope.md\n"
+    "  reviewer:\n    stack:\n      - name: dry\n    blocks:\n      focus: Read the diff.\n"
+)
+
+
+@pytest.fixture
+def blocks_project(project) -> Path:
+    """The project with blocks for you and two keys; you's file exists and implementer's does not."""
+    write(project, BLOCKS_CONFIG)
+    write(project.parent.parent / ".manifestos/blocks/reading.md", "Read the date.\n")
+    return project
+
+
+def test_each_block_prints_one_line_by_its_path_after_the_subagent_stacks_and_before_the_preamble(host, blocks_project, capsys):
+    _, lines = doctor(capsys, "--config", str(blocks_project))
+
+    folder = blocks_project.parent.parent
+    names = [line.split(": ")[0] for line in lines]
+    first = names.index("OK you.blocks.tone")
+    assert lines[first:first + 4] == [
+        "OK you.blocks.tone: one line",
+        f"OK you.blocks.reading: {folder / '.manifestos/blocks/reading.md'}",
+        f"WARN subagents.implementer.blocks.scope: subagents.implementer.blocks.scope did not resolve; tried {folder / 'scope.md'}",
+        "OK subagents.reviewer.blocks.focus: one line",
+    ]
+    assert names[first - 1].endswith(" stack subagents.reviewer") and names[first + 4] == "OK preamble"
+
+
+def remove(path: Path) -> None:
+    path.unlink(missing_ok=True)
+
+
+def empty(path: Path) -> None:
+    write(path, "---\ntitle: Empty\n---\n\n")
+
+
+@pytest.mark.parametrize("spoil, problem", [(remove, "did not resolve; tried"), (empty, "has no text in")])
+@pytest.mark.parametrize("arguments, you_status, implementer_status", [((), "FAIL", "WARN"), (("--agent", "implementer"), "WARN", "FAIL")])
+def test_a_missing_or_empty_block_file_fails_for_the_loaded_agent_and_warns_for_another(
+    host, blocks_project, capsys, spoil, problem, arguments, you_status, implementer_status,
+):
+    folder = blocks_project.parent.parent
+    reading, scope = folder / ".manifestos/blocks/reading.md", folder / "scope.md"
+    spoil(reading)
+    spoil(scope)
+
+    _, lines = doctor(capsys, "--config", str(blocks_project), *arguments)
+
+    assert finding(lines, "you.blocks.reading") == f"{you_status} you.blocks.reading: you.blocks.reading {problem} {reading}"
+    assert finding(lines, "subagents.implementer.blocks.scope") == (
+        f"{implementer_status} subagents.implementer.blocks.scope: subagents.implementer.blocks.scope {problem} {scope}"
+    )
+
+
+def test_block_lines_stay_when_an_element_fails(host, blocks_project, capsys):
+    write(blocks_project, BLOCKS_CONFIG.replace("  blocks:\n    tone:", "    - name: kiss\n  blocks:\n    tone:", 1))
+
+    _, lines = doctor(capsys, "--config", str(blocks_project))
+
+    assert finding(lines, "stack you").startswith("FAIL stack you: element kiss did not resolve")
+    assert finding(lines, "you.blocks.tone") == "OK you.blocks.tone: one line"
