@@ -113,3 +113,5 @@
 2026-11-02T15:40+0200 | owner | receipt | asks a short recap of the release and the user's view
 2026-11-02T15:40+0200 | self | failure | a stray `cat >>` with no input hung one record-writing command for two minutes; killed with pkill, the empty placeholder file removed, queue entries 81-86 verified once each
 2026-11-02T15:40+0200 | self | decision | queue 81-86: mapping form with stack: and blocks:, one-line or file: values, no block scalars, hooks ignore blocks, minimal harness text; publishing 4.2.0 stays the owner's
+2026-11-02T15:55+0200 | owner | ruling | "good. nothing waits on my word. do this." after the recap: build, review, and publish 4.2.0 without a stop for the owner
+2026-11-02T15:55+0200 | self | delegation | s5-spec dispatched for part 4.2.0; plan in history/2026-11-02/plan-420.md; queue 87 and 88 added
