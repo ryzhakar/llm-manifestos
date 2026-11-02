@@ -158,15 +158,15 @@ In a line, `<agent>` stands for `you` or `subagents.<key>`, and `<list>` for an 
 | Line | Cause |
 |------|-------|
 | `no config: tried ...` | no config file and no CLAUDE.md section |
-| `<agent> must be a list of elements or a mapping with stack:` | an agent holds a scalar or a flow list such as `[a, b]` |
-| `unknown key '<key>' in <agent>; a mapping agent holds only stack: and blocks:` | a mapping agent's first key other than `stack` and `blocks` |
-| `no stack: in <agent>; list its elements under stack:` | a mapping agent without `stack` |
+| `<agent> must be a mapping with stack: and optional blocks:, or a list of elements` | an agent holds a scalar or a flow list such as `[a, b]` |
+| `unknown key '<key>' in <agent>; stack: and blocks: are the only keys a mapping agent holds` | a mapping agent's first key other than `stack` and `blocks` |
+| `no stack: in <agent>; add stack: and list its elements under it` | a mapping agent without `stack` |
 | `<agent>.stack must be a list of elements` | a `stack` that holds a scalar or a mapping |
 | `<agent>.blocks must map each block name to one line of text or file: <path>` | a `blocks` that holds a scalar or a list |
 | `block name '<name>' in <agent>.blocks must be one word` | a block name that is empty, as `'': text` gives, or that holds whitespace |
 | `block name '<name>' in <agent>.blocks is reserved; the reserved names are harness, constitution, interplay, commitments, and stack` | a reserved block name, matched exactly |
 | `<agent>.blocks.<name> must be one line of text or file: <path>` | a null value, a value empty after stripping, a list, or a `file` that holds no path |
-| `unknown key '<key>' in <agent>.blocks.<name>; a mapping block holds only file:` | a mapping block's first key other than `file` |
+| `unknown key '<key>' in <agent>.blocks.<name>; file: is the only key a mapping block holds` | a mapping block's first key other than `file` |
 | `<agent>.blocks.<name> did not resolve; tried <path>` | `unharness prompt` or doctor finds no file at a block's path; the load never reads it |
 | `<agent>.blocks.<name> has no text in <path>` | `unharness prompt` or doctor finds a block file empty once its frontmatter is removed and its text stripped |
 | `subagents must be a mapping of role to list of elements` | `subagents` holds a scalar or a list |
