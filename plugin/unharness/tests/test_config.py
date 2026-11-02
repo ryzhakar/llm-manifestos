@@ -154,7 +154,7 @@ def test_a_script_run_on_a_broken_config_prints_one_line_and_exits_1(tmp_path):
     run = run_config_script("--json", "--project", str(write_config(tmp_path, "you: [dry]\n").parent.parent))
 
     assert (run.returncode, run.stdout) == (1, "")
-    assert run.stderr == "unharness: you must be a list of elements\n"
+    assert run.stderr == "unharness: you must be a list of elements or a mapping with stack:\n"
 
 
 def test_a_script_run_with_no_config_prints_one_line_and_exits_2_so_a_hook_can_tell_it_apart(tmp_path):
@@ -391,3 +391,65 @@ def test_a_file_source_resolves_against_the_project_folder(login, tmp_path):
     documents = resolve_stack(config.you.stack, config.directory, config.registry, login)
 
     assert documents[0].text.strip() == "Rules."
+
+
+DRY = Element("dry", None, None, None)
+
+
+@pytest.mark.parametrize("text, you, subagents, mapping_form", [
+    ("- dry\n", Agent([DRY], []), {}, False),
+    ("you:\n  - dry\n", Agent([DRY], []), {}, False),
+    ("you:\nsubagents:\n  other:\n", Agent([], []), {"other": Agent([], [])}, False),
+    ("you:\n  stack:\n    - dry\n", Agent([DRY], []), {}, True),
+    ("you:\n  - dry\nsubagents:\n  other:\n    stack:\n      - dry\n", Agent([DRY], []), {"other": Agent([DRY], [])}, True),
+])
+def test_each_agent_form_loads_to_its_agent_and_mapping_form_follows_the_form(tmp_path, text, you, subagents, mapping_form):
+    assert load(write_config(tmp_path, text)) == Config(you, subagents, tmp_path, None, mapping_form)
+
+
+@pytest.mark.parametrize("text, message", [
+    ("you: dry\n", "you must be a list of elements or a mapping with stack:"),
+    ("you: [dry, kiss]\n", "you must be a list of elements or a mapping with stack:"),
+    ("subagents:\n  other: dry\n", "subagents.other must be a list of elements or a mapping with stack:"),
+    ("you:\n  stak:\n    - dry\n", "unknown key 'stak' in you; a mapping agent holds only stack: and blocks:"),
+    (
+        "subagents:\n  other:\n    stack:\n      - dry\n    block:\n      tone: Be brief.\n",
+        "unknown key 'block' in subagents.other; a mapping agent holds only stack: and blocks:",
+    ),
+    ("you:\n  blocks:\n    tone: Be brief.\n", "no stack: in you; list its elements under stack:"),
+    ("you:\n  stack: dry\n", "you.stack must be a list of elements"),
+    ("you:\n  stack:\n    name: dry\n", "you.stack must be a list of elements"),
+])
+def test_an_agent_of_the_wrong_shape_stops_the_load_with_its_message(tmp_path, text, message):
+    with pytest.raises(UnharnessError) as failure:
+        load(write_config(tmp_path, text))
+
+    assert str(failure.value) == message
+
+
+def test_a_null_stack_and_a_null_blocks_load_empty(tmp_path):
+    config = load(write_config(tmp_path, "you:\n  stack:\n  blocks: ~\nsubagents:\n  other:\n    stack: ~\n"))
+
+    assert (config.you, config.subagents) == (Agent([], []), {"other": Agent([], [])})
+
+
+def test_an_element_error_in_a_mapping_agent_names_the_element_in_its_stack_list(tmp_path):
+    with pytest.raises(UnharnessError) as failure:
+        load(write_config(tmp_path, "you:\n  stack:\n    - purpose: orphan\n      source: skill a:b\n"))
+
+    assert str(failure.value) == "element 1 of you.stack has no name; add name: or a file source"
+
+
+LIST_AGENTS = "manifesto_dir: /m\nyou:\n  - dry\nsubagents:\n  other:\n    - name: kiss\n      purpose: p\n"
+MAPPING_AGENTS = (
+    "manifesto_dir: /m\nyou:\n  stack:\n    - dry\n"
+    "subagents:\n  other:\n    stack:\n      - name: kiss\n        purpose: p\n"
+)
+
+
+def test_json_prints_mapping_agents_exactly_as_the_same_stacks_written_as_lists(tmp_path):
+    lists = run_config_script("--json", "--project", str(write_config(tmp_path, LIST_AGENTS).parent.parent))
+    mappings = run_config_script("--json", "--project", str(write_config(tmp_path, MAPPING_AGENTS).parent.parent))
+
+    assert (mappings.returncode, mappings.stderr) == (0, "")
+    assert mappings.stdout == lists.stdout

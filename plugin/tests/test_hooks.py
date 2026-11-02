@@ -47,7 +47,8 @@ def run_hook(script, config, stdin="", plugin_root=PLUGIN_ROOT, files=None, setu
 
 
 def unbound_line(message):
-    return f"No manifesto bound: {message}; run unharness doctor for the fix."
+    """Return the line a binding hook prints for a config error, the message's one trailing colon dropped."""
+    return f"No manifesto bound: {message.removesuffix(':')}; run unharness doctor for the fix."
 
 
 def bound_line(script, stdout):
@@ -119,13 +120,14 @@ class SessionStartRegistry(unittest.TestCase):
 
 class ConfigProblems(unittest.TestCase):
     def test_a_broken_config_is_named_on_stderr_and_in_the_output_form_of_every_binding_hook(self):
+        message = "you must be a list of elements or a mapping with stack:"
         r = run_hook("drift-reminder.sh", "you: [first-principles]\n")
-        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, "", "unharness: you must be a list of elements\n"))
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, "", f"unharness: {message}\n"))
         for script in BINDING_HOOKS:
             r = run_hook(script, "you: [first-principles]\n", stdin=json.dumps({"agent_type": "worker"}))
             self.assertEqual(r.returncode, 0, script)
-            self.assertEqual(r.stderr, "unharness: you must be a list of elements\n", script)
-            self.assertEqual(bound_line(script, r.stdout), unbound_line("you must be a list of elements"), script)
+            self.assertEqual(r.stderr, f"unharness: {message}\n", script)
+            self.assertEqual(bound_line(script, r.stdout), unbound_line(message), script)
 
     def test_a_legacy_source_is_refused_in_one_line_in_every_binding_hook(self):
         for source in ("https://example.com/x.md", "./a.md", "some hint"):

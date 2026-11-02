@@ -39,6 +39,9 @@ NAMESPACE_SEPARATOR = ":"
 FOLDER_KEY_PARTS = ("/",)
 FOLDER_KEY_NAMES = (".", "..")
 EMPTY_STACK_MESSAGE = "the stack is empty"
+STACK_KEY = "stack"
+BLOCKS_KEY = "blocks"
+AGENT_KEYS = (STACK_KEY, BLOCKS_KEY)
 ACTIVE_MANIFESTOS_SECTION = re.compile(r"^## Active Manifestos\n(.*?)(?=^## |\Z)", re.M | re.S)
 SOURCE = re.compile(rf"^({MANIFESTO_SOURCE}|{SKILL_SOURCE}|{FILE_SOURCE}) (\S.*)$")
 MISSING_CONFIG_STATUS = 2
@@ -91,6 +94,7 @@ class Config:
     subagents: dict[str, Agent]
     directory: Path
     registry: Path | None
+    mapping_form: bool = False
 
 
 @dataclass(frozen=True)
@@ -143,11 +147,13 @@ def load(path: Path) -> Config:
         raise UnharnessError("subagents must be a mapping of role to list of elements")
     for key in roles:
         _require_folder_name(key)
+    you = root.get("you")
     return Config(
-        you=Agent(_elements(root.get("you") or [], "you"), []),
-        subagents={role: Agent(_elements(items or [], f"subagents.{role}"), []) for role, items in roles.items()},
+        you=_agent(you, "you"),
+        subagents={role: _agent(value, f"subagents.{role}") for role, value in roles.items()},
         directory=project,
         registry=(project / root["manifesto_dir"]).resolve() if root.get("manifesto_dir") else None,
+        mapping_form=any(isinstance(value, dict) for value in (you, *roles.values())),
     )
 
 
@@ -211,6 +217,28 @@ def _config_text(path: Path, project: Path) -> str:
     if not section:
         raise MissingConfigError(f"no config: tried {path} and the Active Manifestos section of {claude_md}")
     return section.group(1)
+
+
+def _agent(value: list | dict | str | None, agent: str) -> Agent:
+    """Read an agent's value, a list of elements, a mapping that lists them under stack:, or null, into its Agent."""
+    if value is None:
+        return Agent([], [])
+    if isinstance(value, list):
+        return Agent(_elements(value, agent), [])
+    if not isinstance(value, dict):
+        raise UnharnessError(f"{agent} must be a list of elements or a mapping with {STACK_KEY}:")
+    _require_agent_keys(value, agent)
+    stack = value[STACK_KEY]
+    return Agent(_elements([] if stack is None else stack, f"{agent}.{STACK_KEY}"), [])
+
+
+def _require_agent_keys(fields: dict, agent: str) -> None:
+    """Refuse a mapping agent's first key other than stack: and blocks:, then a mapping agent without stack:."""
+    unknown = [key for key in fields if key not in AGENT_KEYS]
+    if unknown:
+        raise UnharnessError(f"unknown key '{unknown[0]}' in {agent}; a mapping agent holds only {STACK_KEY}: and {BLOCKS_KEY}:")
+    if STACK_KEY not in fields:
+        raise UnharnessError(f"no {STACK_KEY}: in {agent}; list its elements under {STACK_KEY}:")
 
 
 def _elements(items: list, list_label: str) -> list[Element]:
