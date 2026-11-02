@@ -17,9 +17,10 @@ from unharness.compile import (
 from unharness.config import (
     CONFIG_PATH,
     EMPTY_STACK_MESSAGE,
+    Agent,
     Config,
-    Element,
     UnharnessError,
+    agent_path,
     empty_key_message,
     fail,
     load,
@@ -38,7 +39,7 @@ from unharness.launch import (
     terminal_device,
     version_output,
 )
-from unharness.resolve import login_dir, manifesto_elements, manifesto_plugin_dir, resolve_stack
+from unharness.resolve import login_dir, manifesto_elements, manifesto_plugin_dir, resolve_block, resolve_stack
 from unharness.session import load_preamble, read_if_present
 from unharness.switches import VALUED_OPTION, shipped_switches, strip_table
 
@@ -165,8 +166,8 @@ def _diff(arguments: argparse.Namespace, login: Path) -> int:
     if arguments.slugs:
         raise UnharnessError(f"{DIFF_FLAG} takes no slugs")
     config = load(arguments.config)
-    elements, key = _elements_to_bind(config, arguments.agent)
-    documents = resolve_stack(elements, config.directory, config.registry, login)
+    agent, key = _agent_to_bind(config, arguments.agent)
+    documents = resolve_stack(agent.stack, config.directory, config.registry, login)
     names = [name for minified in (False, True) for name in _session_files(key, minified).paths]
     differences = [line for name in names for line in session_file_diff(name, read_if_present(config.directory / name), documents)]
     if differences:
@@ -182,27 +183,29 @@ def _output(arguments: argparse.Namespace, login: Path) -> str:
         if arguments.agent is not None:
             raise UnharnessError(f"{AGENT_FLAG} takes no slugs")
         return stack_view(resolve_stack(manifesto_elements(arguments.slugs), config.directory, config.registry, login))
-    elements, key = _elements_to_bind(config, arguments.agent)
-    documents = resolve_stack(elements, config.directory, config.registry, login)
+    agent, key = _agent_to_bind(config, arguments.agent)
+    documents = resolve_stack(agent.stack, config.directory, config.registry, login)
     if verb == STACK_VERB:
         return stack_view(documents)
+    blocks = [resolve_block(block, agent_path(key), config.directory) for block in agent.blocks]
     session_files = _session_files(key, arguments.minified)
     return compile_prompt(
         documents,
         load_preamble(config.directory).text,
         read_if_present(config.directory / session_files.interplay),
         read_if_present(config.directory / session_files.commitments),
-        constitution_blocks(elements, documents, config.directory, manifesto_plugin_dir(config.registry, login), mode),
+        constitution_blocks(agent.stack, documents, config.directory, manifesto_plugin_dir(config.registry, login), mode),
         session_files,
+        blocks,
     )
 
 
-def _elements_to_bind(config: Config, agent_type: str | None) -> tuple[list[Element], str | None]:
-    """Return the elements to bind and the subagents key they came from, None for the main stack."""
+def _agent_to_bind(config: Config, agent_type: str | None) -> tuple[Agent, str | None]:
+    """Return the agent to bind and the subagents key it came from, None for you."""
     if agent_type is None:
         if not config.you.stack:
             raise UnharnessError(EMPTY_STACK_MESSAGE)
-        return config.you.stack, None
+        return config.you, None
     keys = list(config.subagents)
     match = subagent_match(agent_type, keys)
     if match is None:
@@ -212,7 +215,7 @@ def _elements_to_bind(config: Config, agent_type: str | None) -> tuple[list[Elem
         print(f"unharness: {agent_type} matches no subagents key; using other:, the default stack", file=sys.stderr)
     if not config.subagents[key].stack:
         raise UnharnessError(empty_key_message(key))
-    return config.subagents[key].stack, key
+    return config.subagents[key], key
 
 
 def _session_files(key: str | None, minified: bool) -> SessionFiles:

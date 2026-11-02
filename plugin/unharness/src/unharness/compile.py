@@ -46,14 +46,19 @@ def agent_files(files: SessionFiles, key: str) -> SessionFiles:
 
 def compile_prompt(
     documents: list[Document], preamble: str, interplay: str | None, commitments: str | None,
-    constitution: Sequence[Document] | None = None, files: SessionFiles = FULL_FILES,
+    constitution: Sequence[Document] | None = None, files: SessionFiles = FULL_FILES, agent_blocks: Sequence[Document] = (),
 ) -> str:
-    """Return the system prompt: preamble, constitution, interplay, commitments; stop if a session file is stale."""
+    """Return the system prompt: preamble, the agent's blocks, constitution, interplay, commitments; stop if a session file is stale."""
     session_files = [
         _current_body(files.interplay, interplay, documents, files.fix_command),
         _current_body(files.commitments, commitments, documents, files.fix_command),
     ]
-    return "\n\n".join([harness_block(preamble), constitution_block(documents if constitution is None else constitution), *session_files])
+    return "\n\n".join([
+        harness_block(preamble),
+        *map(_tagged, agent_blocks),
+        constitution_block(documents if constitution is None else constitution),
+        *session_files,
+    ])
 
 
 def harness_block(preamble: str) -> str:

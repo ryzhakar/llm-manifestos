@@ -225,3 +225,87 @@ def test_prompt_accepts_session_files_recorded_with_a_literal_file_hash_without_
     run = unharness(login, "prompt", cwd=tmp_path)
 
     assert run.returncode == 0, run.stderr
+
+
+BLOCKS_CONFIG = (
+    "you:\n  stack:\n    - name: dry\n      purpose: one home\n"
+    "  blocks:\n    tone: Answer in plain words.\n    reading:\n      file: notes/reading.md\n"
+)
+SHIPPED_HARNESS = "<harness>\n" + files("unharness").joinpath("preamble.md").read_text().strip() + "\n</harness>"
+
+
+@pytest.fixture
+def blocks_project(tmp_path, login) -> Path:
+    folder = tmp_path / "blocks"
+    write(folder / ".manifestos/config.yaml", BLOCKS_CONFIG)
+    write(folder / "notes/reading.md", "---\ntitle: Reading\n---\n\nRead the date.\n\n")
+    write_session_files(folder, login)
+    return folder
+
+
+def test_prompt_prints_the_blocks_in_declaration_order_between_harness_and_constitution(login, blocks_project):
+    run = unharness(login, "prompt", cwd=blocks_project)
+
+    assert run.returncode == 0, run.stderr
+    assert run.stdout.startswith(
+        f"{SHIPPED_HARNESS}\n\n<tone>\nAnswer in plain words.\n</tone>\n\n<reading>\nRead the date.\n</reading>\n\n<constitution>\n"
+    )
+
+
+def test_a_missing_block_file_stops_prompt_before_the_session_files_are_checked(login, blocks_project):
+    (blocks_project / "notes/reading.md").unlink()
+    for name in ("interplay.md", "commitments.md"):
+        (blocks_project / ".manifestos" / name).unlink()
+
+    run = unharness(login, "prompt", cwd=blocks_project)
+
+    assert (run.returncode, run.stdout) == (1, "")
+    assert run.stderr == f"unharness: you.blocks.reading did not resolve; tried {blocks_project.resolve() / 'notes/reading.md'}\n"
+
+
+def test_a_block_file_with_no_text_past_its_frontmatter_stops_prompt(login, blocks_project):
+    write(blocks_project / "notes/reading.md", "---\ntitle: Empty\n---\n\n  \n")
+
+    run = unharness(login, "prompt", cwd=blocks_project)
+
+    assert (run.returncode, run.stdout) == (1, "")
+    assert run.stderr == f"unharness: you.blocks.reading has no text in {blocks_project.resolve() / 'notes/reading.md'}\n"
+
+
+BLOCKS_PREFIX = f"{SHIPPED_HARNESS}\n\n<tone>\nAnswer in plain words.\n</tone>\n\n<reading>\nRead the date.\n</reading>\n\n<constitution>\n"
+
+
+@pytest.mark.parametrize("flags", [
+    ("--digests",), ("--stack-digests",), ("--stack-digests", "--overlap"), ("--minified",), ("--stack-digests", "--overlap", "--minified"),
+])
+def test_every_mode_flag_keeps_the_blocks(login, blocks_project, flags):
+    write(blocks_project / ".manifestos/digests/dry.md", "Dry, briefly.\n")
+    stamp = unharness(login, "stamp", ".manifestos/digests/dry.md", cwd=blocks_project)
+    write_minified_files(blocks_project, login)
+
+    run = unharness(login, "prompt", *flags, cwd=blocks_project)
+
+    assert stamp.returncode == 0, stamp.stderr
+    assert run.returncode == 0, run.stderr
+    assert run.stdout.startswith(BLOCKS_PREFIX)
+
+
+def test_a_block_edit_changes_no_output_of_stack_or_stack_diff(login, blocks_project):
+    write_minified_files(blocks_project, login)
+    before = [unharness(login, "stack", *flags, cwd=blocks_project) for flags in ((), ("--diff",))]
+    write(blocks_project / ".manifestos/config.yaml", BLOCKS_CONFIG.replace("Answer in plain words.", "Answer tersely."))
+    write(blocks_project / "notes/reading.md", "Read the folder.\n")
+
+    after = [unharness(login, "stack", *flags, cwd=blocks_project) for flags in ((), ("--diff",))]
+
+    assert [(run.returncode, run.stdout, run.stderr) for run in after] == [(run.returncode, run.stdout, run.stderr) for run in before]
+    assert [run.returncode for run in after] == [0, 0]
+
+
+def test_a_quoted_line_keeps_its_hash(login, blocks_project):
+    write(blocks_project / ".manifestos/config.yaml", BLOCKS_CONFIG.replace("Answer in plain words.", '"Mark a heading with # and a space." # why'))
+
+    run = unharness(login, "prompt", cwd=blocks_project)
+
+    assert run.returncode == 0, run.stderr
+    assert "\n<tone>\nMark a heading with # and a space.\n</tone>\n" in run.stdout

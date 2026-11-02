@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
 
-from unharness.config import MANIFESTO_SOURCE, SKILL_SOURCE, TEXT_ENCODING, Element, UnharnessError
+from unharness.config import MANIFESTO_SOURCE, SKILL_SOURCE, TEXT_ENCODING, Block, Element, UnharnessError, block_path
 
 PLUGIN_ROOT_PLACEHOLDER = "${CLAUDE_PLUGIN_ROOT}"
 FRONTMATTER = re.compile(r"\A---\n(?=[A-Za-z_][\w-]*:).*?\n---\n", re.S)
@@ -48,17 +48,36 @@ def resolve_stack(elements: list[Element], directory: Path, registry: Path | Non
     return [_resolve_element(element, directory, registry, login) for element in elements]
 
 
+def resolve_block(block: Block, agent: str, directory: Path) -> Document:
+    """Return the agent's block as a Document without a purpose, its line or its file's text read as a file element's, stripped."""
+    if block.file is None:
+        return Document(block.name, None, block.line.strip())
+    path = directory / block.file
+    place = block_path(agent, block.name)
+    if not path.is_file():
+        raise UnharnessError(f"{place} did not resolve; tried {path}")
+    text = _body(path)
+    if not text:
+        raise UnharnessError(f"{place} has no text in {path}")
+    return Document(block.name, None, text)
+
+
 def _resolve_element(element: Element, directory: Path, registry: Path | None, login: Path) -> Document:
     path, plugin_root = locate(element, directory, registry, login)
     if not path.is_file():
         raise UnharnessError(f"element {element.name} did not resolve; tried {path}")
-    body = FRONTMATTER.sub("", path.read_text(encoding=TEXT_ENCODING)).strip()
+    body = _body(path)
     return Document(
         element.name,
         element.purpose,
         body.replace(PLUGIN_ROOT_PLACEHOLDER, str(plugin_root)) if plugin_root else body,
         sha256(body.encode()).hexdigest(),
     )
+
+
+def _body(path: Path) -> str:
+    """Return the file's text with its frontmatter removed, stripped."""
+    return FRONTMATTER.sub("", path.read_text(encoding=TEXT_ENCODING)).strip()
 
 
 def locate(element: Element, directory: Path, registry: Path | None, login: Path) -> tuple[Path, Path | None]:

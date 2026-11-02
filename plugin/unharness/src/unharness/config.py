@@ -276,6 +276,11 @@ def block_path(agent: str, name: str) -> str:
     return f"{agent}.{BLOCKS_KEY}.{name}"
 
 
+def agent_path(key: str | None) -> str:
+    """Return the YAML path of the agent: you, or subagents.<key> for a subagents key."""
+    return "you" if key is None else f"subagents.{key}"
+
+
 def _require_agent_keys(fields: dict, agent: str) -> None:
     """Refuse a mapping agent's first key other than stack: and blocks:, then a mapping agent without stack:."""
     _refuse_unknown_key(fields, AGENT_KEYS, agent, "agent")

@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 from helpers import write
-from test_cli import unharness
+from test_cli import unharness, write_session_files
 from unharness.compile import stack_block, stack_view
 from unharness.config import load
 from unharness.resolve import resolve_stack
@@ -153,3 +153,36 @@ def test_stack_agent_refuses_slugs(login, project):
     run = unharness(login, "stack", "--agent", "implementer", "dry", cwd=project)
 
     assert (run.returncode, run.stdout, run.stderr) == (1, "", "unharness: --agent takes no slugs\n")
+
+
+BLOCKS_CONFIG = (
+    "you:\n  stack:\n    - dry\n  blocks:\n    main: Main only.\n"
+    "subagents:\n"
+    "  implementer:\n    stack:\n      - dry\n    blocks:\n      scope: Implementer only.\n"
+    "  reviewer:\n    - dry\n"
+    "  other:\n    stack:\n      - dry\n    blocks:\n      fallback: Other only.\n"
+)
+BLOCK_TAGS = ("<main>", "<scope>", "<fallback>")
+
+
+@pytest.fixture
+def blocks_project(tmp_path, login) -> Path:
+    folder = tmp_path / "blocks"
+    write(folder / ".manifestos" / "config.yaml", BLOCKS_CONFIG)
+    write_session_files(folder, login)
+    for key in ("implementer", "reviewer", "other"):
+        write_agent_files(folder, login, key)
+    return folder
+
+
+@pytest.mark.parametrize("arguments, tags, stderr", [
+    ((), ["<main>"], ""),
+    (("--agent", "implementer"), ["<scope>"], ""),
+    (("--agent", "explorer"), ["<fallback>"], FALL_THROUGH),
+    (("--agent", "reviewer"), [], ""),
+])
+def test_each_prompt_carries_the_blocks_of_its_own_agent_alone(login, blocks_project, arguments, tags, stderr):
+    run = unharness(login, "prompt", *arguments, cwd=blocks_project)
+
+    assert (run.returncode, run.stderr) == (0, stderr)
+    assert [tag for tag in BLOCK_TAGS if tag in run.stdout] == tags
