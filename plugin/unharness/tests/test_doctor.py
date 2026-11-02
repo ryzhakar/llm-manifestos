@@ -767,9 +767,14 @@ def test_a_stale_single_fails_under_stack_digests_since_the_flag_implies_digests
 
 
 @needs_digests
-def test_prompt_size_equals_the_word_count_of_the_prompts_it_names(host, project, capsys):
+@pytest.mark.parametrize("config", [
+    "you:\n  - name: dry\n",
+    "you:\n  stack:\n    - name: dry\n  blocks:\n    tone: Be brief.\n    reading:\n      file: reading.md\n",
+])
+def test_prompt_size_equals_the_word_count_of_the_prompts_it_names(host, project, capsys, config):
     write(plugin_folder(host) / "manifestos" / "dry.md", "# dry\n\nOne two.\n")
-    write(project, "you:\n  - name: dry\n")
+    write(project, config)
+    write(project.parent.parent / "reading.md", "---\ntitle: Reading\n---\nRead the date and the folder.\n")
     write(plugin_folder(host) / "digests" / "dry.md", "Short.")
     stamp(host, project, plugin_folder(host) / "digests", "dry")
     write_session_files(project, host / "login", FULL_PAIR + MINIFIED_PAIR)
@@ -1039,3 +1044,28 @@ def test_the_plugin_floor_is_4_2_0_for_a_loaded_config_with_a_mapping_agent_and_
     _, lines = doctor(capsys, "--config", str(project))
 
     assert finding(lines, "manifesto plugin") == line
+
+
+ONE_LINE_BLOCK = "  blocks:\n    tone: Be brief.\n"
+UNLOADABLE_BLOCKS = "    gone:\n      file: gone.md\n    hollow:\n      file: hollow.md\n"
+SUBAGENT_BLOCK = "subagents:\n  other:\n    stack:\n      - name: dry\n    blocks:\n      tone: Be brief.\n"
+
+
+@pytest.mark.parametrize("config, size", [
+    ("you:\n  - name: dry\n", "full 14 words; shortest 11 words"),
+    ("you:\n  stack:\n    - name: dry\n" + ONE_LINE_BLOCK, "full 18 words; shortest 15 words"),
+    ("you:\n  stack:\n    - name: dry\n" + ONE_LINE_BLOCK + UNLOADABLE_BLOCKS, "full 18 words; shortest 15 words"),
+    ("you:\n  - name: dry\n" + SUBAGENT_BLOCK, "full 14 words; shortest 11 words"),
+])
+def test_prompt_size_grows_by_the_words_of_the_blocks_of_you_that_load(host, project, capsys, config, size):
+    write(plugin_folder(host) / "manifestos" / "dry.md", "# dry\n\nOne two.\n")
+    write(project, config)
+    write(plugin_folder(host) / "digests" / "dry.md", "Short.")
+    stamp(host, project, plugin_folder(host) / "digests", "dry")
+    write_session_files(project, host / "login", FULL_PAIR + MINIFIED_PAIR)
+    write(project.parent.parent / ".manifestos/preamble.md", "Alpha beta.")
+    write(project.parent.parent / "hollow.md", "---\ntitle: Hollow\n---\n")
+
+    _, lines = doctor(capsys, "--config", str(project))
+
+    assert finding(lines, "prompt size") == f"OK prompt size: {size}"

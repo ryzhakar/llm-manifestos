@@ -55,7 +55,7 @@ def compile_prompt(
     ]
     return "\n\n".join([
         harness_block(preamble),
-        *map(_tagged, agent_blocks),
+        *agent_blocks_in_tags(agent_blocks),
         constitution_block(documents if constitution is None else constitution),
         *session_files,
     ])
@@ -64,6 +64,11 @@ def compile_prompt(
 def harness_block(preamble: str) -> str:
     """Return the preamble in its tags, the first block of the system prompt."""
     return f"<harness>\n{preamble.strip()}\n</harness>"
+
+
+def agent_blocks_in_tags(blocks: Sequence[Document]) -> list[str]:
+    """Return each of the agent's blocks in its own tags, the parts of the prompt between the harness and the constitution."""
+    return [_tagged(block) for block in blocks]
 
 
 def stack_view(documents: list[Document]) -> str:

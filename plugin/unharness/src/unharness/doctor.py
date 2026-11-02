@@ -13,6 +13,7 @@ from unharness.compile import (
     MINIFIED_FILES,
     STACK_BLOCK,
     SessionFiles,
+    agent_blocks_in_tags,
     agent_files,
     constitution_block,
     harness_block,
@@ -155,7 +156,9 @@ def doctor(
         _cover_finding(config.you.stack, stack, config.directory, plugin, mode, flag_error, loads_you),
         *_session_findings(stack, config.directory, modes, loads_you),
     ]
-    size = [] if stack is None else [_prompt_size_finding(config.you.stack, stack, config.directory, plugin)]
+    size = [] if stack is None else [
+        _prompt_size_finding(config.you.stack, stack, config.directory, plugin, _loadable_blocks(config.you.blocks, config.directory)),
+    ]
     return [
         *layout,
         Finding(Status.OK, "config", str(config_path.resolve())),
@@ -260,6 +263,17 @@ def _block_finding(block: Block, agent: str, directory: Path, loaded: bool) -> F
     return Finding(Status.OK, name, ONE_LINE if block.file is None else str(locate_block(block, directory)))
 
 
+def _loadable_blocks(blocks: list[Block], directory: Path) -> list[Document]:
+    """Return the blocks of you whose text loads, leaving out a block whose file is missing or empty."""
+    loaded = []
+    for block in blocks:
+        try:
+            loaded.append(resolve_block(block, agent_path(None), directory))
+        except UnharnessError:
+            continue
+    return loaded
+
+
 def _skill_finding(element: Element, config: Config, login: Path) -> Finding:
     """Compare the cached version a plugin skill resolves to with the version installed_plugins.json records."""
     plugin = element.reference.partition(PLUGIN_SKILL_SEPARATOR)[0]
@@ -302,16 +316,19 @@ def _cover_finding(
     return Finding(Status.OK, "cover", f"{stems}; {_word_count(digest.text for digest in chosen)} words")
 
 
-def _prompt_size_finding(elements: list[Element], documents: list[Document], directory: Path, plugin: Path) -> Finding:
-    """Count the words of the full prompt and of the shortest one; warn when the shortest cannot compile."""
+def _prompt_size_finding(
+    elements: list[Element], documents: list[Document], directory: Path, plugin: Path, blocks: list[Document],
+) -> Finding:
+    """Count the words of the full prompt and of the shortest one, the blocks of you included; warn when the shortest cannot compile."""
     name = "prompt size"
     preamble = harness_block(load_preamble(directory).text)
-    full = _word_count([preamble, constitution_block(documents), *_session_bodies(directory, FULL_FILES)])
+    tagged_blocks = agent_blocks_in_tags(blocks)
+    full = _word_count([preamble, *tagged_blocks, constitution_block(documents), *_session_bodies(directory, FULL_FILES)])
     try:
         shortest_blocks = constitution_blocks(elements, documents, directory, plugin, STACKS_WITH_OVERLAP)
     except UnharnessError as error:
         return Finding(Status.WARN, name, f"shortest mode cannot compile: {error}")
-    shortest = _word_count([preamble, constitution_block(shortest_blocks), *_session_bodies(directory, MINIFIED_FILES)])
+    shortest = _word_count([preamble, *tagged_blocks, constitution_block(shortest_blocks), *_session_bodies(directory, MINIFIED_FILES)])
     return Finding(Status.OK, name, f"full {full} words; shortest {shortest} words")
 
 
