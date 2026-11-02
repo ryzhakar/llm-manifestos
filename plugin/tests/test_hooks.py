@@ -190,6 +190,43 @@ class StandDownUnderUnharness(unittest.TestCase):
 
 
 
+LIST_AGENTS = HAPPY + "subagents:\n  worker:\n    - first-principles\n  other:\n    - no-such-manifesto\n"
+MAPPING_AGENTS = (
+    "you:\n  stack:\n    - first-principles\n  blocks:\n    tone: Be brief.\n    reading:\n      file: missing.md\n"
+    "subagents:\n  worker:\n    stack:\n      - first-principles\n    blocks:\n      scope: Stay in scope.\n"
+    "  other:\n    stack:\n      - no-such-manifesto\n"
+)
+HOOK_RUNS = (
+    ("session-start.sh", "worker", "first-principles"),
+    ("post-compact.sh", "worker", "first-principles"),
+    ("drift-reminder.sh", "worker", "first-principles"),
+    ("subagent-start.sh", "worker", "first-principles"),
+    ("subagent-start.sh", "stranger", "no-such-manifesto"),
+)
+RESERVED_BLOCK = "you:\n  stack:\n    - first-principles\n  blocks:\n    harness: Mine.\n"
+RESERVED_MESSAGE = (
+    "block name 'harness' in you.blocks is reserved; the reserved names are harness, constitution, interplay, commitments, and stack"
+)
+
+
+class MappingAgents(unittest.TestCase):
+    def test_every_hook_prints_the_same_bytes_for_mapping_agents_with_blocks_as_for_the_same_stacks_as_lists(self):
+        for script, agent_type, element in HOOK_RUNS:
+            with self.subTest(script=script, agent_type=agent_type):
+                stdin = json.dumps({"agent_type": agent_type})
+                lists = run_hook(script, LIST_AGENTS, stdin=stdin)
+                mappings = run_hook(script, MAPPING_AGENTS, stdin=stdin)
+                self.assertIn(element, lists.stdout)
+                self.assertEqual((mappings.returncode, mappings.stdout, mappings.stderr), (lists.returncode, lists.stdout, lists.stderr))
+
+    def test_a_malformed_block_makes_every_binding_hook_print_the_unbound_line(self):
+        for script in BINDING_HOOKS:
+            r = run_hook(script, RESERVED_BLOCK, stdin=json.dumps({"agent_type": "worker"}))
+            self.assertEqual(r.returncode, 0, script)
+            self.assertEqual(r.stderr, f"unharness: {RESERVED_MESSAGE}\n", script)
+            self.assertEqual(bound_line(script, r.stdout), unbound_line(RESERVED_MESSAGE), script)
+
+
 class PostCompact(unittest.TestCase):
     def test_happy_path_emits_postcompact_json(self):
         r = run_hook("post-compact.sh", HAPPY)
