@@ -34,6 +34,8 @@ OLD_LAYOUT_MOVES = (
     (".claude/digests", DIGESTS_PATH),
 )
 MAKE_PROJECT_FOLDER = f"mkdir -p {PROJECT_FOLDER}"
+YOU_KEY = "you"
+SUBAGENTS_KEY = "subagents"
 OTHER_KEY = "other"
 NAMESPACE_SEPARATOR = ":"
 FOLDER_KEY_PARTS = ("/",)
@@ -142,17 +144,17 @@ def load(path: Path) -> Config:
     _require_new_layout(project)
     root = parse_yaml(_config_text(path, project))
     if isinstance(root, list):
-        root = {"you": root}
+        root = {YOU_KEY: root}
     root = root or {}
-    roles = root.get("subagents") or {}
+    roles = root.get(SUBAGENTS_KEY) or {}
     if not isinstance(roles, dict):
         raise UnharnessError("subagents must be a mapping of role to list of elements")
     for key in roles:
         _require_folder_name(key)
-    you = root.get("you")
+    you = root.get(YOU_KEY)
     return Config(
-        you=_agent(you, "you"),
-        subagents={role: _agent(value, f"subagents.{role}") for role, value in roles.items()},
+        you=_agent(you, agent_path(None)),
+        subagents={role: _agent(value, agent_path(role)) for role, value in roles.items()},
         directory=project,
         registry=(project / root["manifesto_dir"]).resolve() if root.get("manifesto_dir") else None,
         mapping_form=any(isinstance(value, dict) for value in (you, *roles.values())),
@@ -186,7 +188,7 @@ def no_subagent_key_message(agent_type: str, keys: list[str]) -> str:
 
 def empty_key_message(key: str) -> str:
     """Return the message for a subagents key whose list holds no elements."""
-    return f"subagents.{key} is empty"
+    return f"{agent_path(key)} is empty"
 
 
 def _require_folder_name(key: str) -> None:
@@ -278,7 +280,7 @@ def block_path(agent: str, name: str) -> str:
 
 def agent_path(key: str | None) -> str:
     """Return the YAML path of the agent: you, or subagents.<key> for a subagents key."""
-    return "you" if key is None else f"subagents.{key}"
+    return YOU_KEY if key is None else f"{SUBAGENTS_KEY}.{key}"
 
 
 def _require_agent_keys(fields: dict, agent: str) -> None:
