@@ -326,10 +326,20 @@ def test_a_block_edit_changes_no_output_of_stack_or_stack_diff(login, blocks_pro
     assert [run.returncode for run in after] == [0, 0]
 
 
-def test_a_quoted_line_keeps_its_hash(login, blocks_project):
-    write(blocks_project / ".manifestos/config.yaml", BLOCKS_CONFIG.replace("Answer in plain words.", '"Mark a heading with # and a space." # why'))
+def test_a_quoted_line_keeps_its_hash_and_loses_its_surrounding_spaces(login, blocks_project):
+    write(blocks_project / ".manifestos/config.yaml", BLOCKS_CONFIG.replace("Answer in plain words.", '"  Mark a heading with # and a space.  " # why'))
 
     run = unharness(login, "prompt", cwd=blocks_project)
 
     assert run.returncode == 0, run.stderr
     assert "\n<tone>\nMark a heading with # and a space.\n</tone>\n" in run.stdout
+
+
+def test_an_element_that_does_not_resolve_stops_prompt_before_a_missing_block_file(login, blocks_project):
+    write(blocks_project / ".manifestos/config.yaml", BLOCKS_CONFIG.replace("- name: dry", "- name: nope"))
+    (blocks_project / "notes/reading.md").unlink()
+
+    run = unharness(login, "prompt", cwd=blocks_project)
+
+    assert (run.returncode, run.stdout) == (1, "")
+    assert run.stderr.startswith("unharness: element nope did not resolve; tried ")

@@ -481,6 +481,7 @@ MALFORMED_TONE = "you.blocks.tone must be one line of text or file: <path>"
     ("\n    tone:\n      file:\n        - a.md\n", MALFORMED_TONE),
     ("\n    tone:\n      path: a.md\n", "unknown key 'path' in you.blocks.tone; a mapping block holds only file:"),
     ("\n    tone:\n      file: a.md\n      path: b.md\n", "unknown key 'path' in you.blocks.tone; a mapping block holds only file:"),
+    ("\n    tone: >\n      Be brief.\n", "key 'tone' holds a block scalar; block scalars are not supported; write the value on one line"),
 ])
 def test_a_malformed_block_stops_the_load_with_its_message(tmp_path, blocks, message):
     with pytest.raises(UnharnessError) as failure:
