@@ -1018,3 +1018,24 @@ def test_block_lines_stay_when_an_element_fails(host, blocks_project, capsys):
 
     assert finding(lines, "stack you").startswith("FAIL stack you: element kiss did not resolve")
     assert finding(lines, "you.blocks.tone") == "OK you.blocks.tone: one line"
+
+
+MAPPING_KEY_CONFIG = CONFIG + "subagents:\n  implementer:\n    stack:\n      - name: dry\n"
+BROKEN_MAPPING_CONFIG = "you:\n  stack:\n    - name: dry\n  blocks:\n    harness: Mine.\n"
+MAPPING_FLOOR_FAIL = "FAIL manifesto plugin: 4.1.0 is below 4.2.0, the first version whose hooks read an agent written as a mapping"
+
+
+@pytest.mark.parametrize("config, version, line", [
+    (MAPPING_KEY_CONFIG, "4.1.0", MAPPING_FLOOR_FAIL),
+    (MAPPING_KEY_CONFIG, "4.2.0", f"OK manifesto plugin: 4.2.0; {MANIFESTO_PLUGIN_NOTE}"),
+    (CONFIG, "4.1.0", f"OK manifesto plugin: 4.1.0; {MANIFESTO_PLUGIN_NOTE}"),
+    (CONFIG, "4.0.0", "FAIL manifesto plugin: 4.0.0 is below 4.0.1, the first version whose subagent hook binds under unharness"),
+    (BROKEN_MAPPING_CONFIG, "4.1.0", f"OK manifesto plugin: 4.1.0; {MANIFESTO_PLUGIN_NOTE}"),
+])
+def test_the_plugin_floor_is_4_2_0_for_a_loaded_config_with_a_mapping_agent_and_4_0_1_otherwise(host, project, capsys, config, version, line):
+    write(project, config)
+    record_installed(host / "login", manifesto=version, **{"agent-conduct": SKILL_PLUGIN_VERSION})
+
+    _, lines = doctor(capsys, "--config", str(project))
+
+    assert finding(lines, "manifesto plugin") == line

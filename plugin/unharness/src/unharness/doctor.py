@@ -66,9 +66,7 @@ from unharness.resolve import (
 from unharness.session import load_preamble, read_if_present
 from unharness.switches import Switch, choose_version, newest_version, parse_version, require_version
 
-MINIMUM_MANIFESTO_VERSION = "4.0.1"
 SUBAGENT_HOOK_NOTE = "under unharness its subagent hook binds subagents unless launch --no-hooks"
-SUBAGENT_HOOK_FLOOR_REASON = "the first version whose subagent hook binds under unharness"
 INSTALLED_PLUGINS_FILE = Path("plugins") / "installed_plugins.json"
 VERSION_FLAG = "--version"
 VERSION_TIMEOUT_SECONDS = 10
@@ -99,6 +97,18 @@ class Finding:
 
 
 @dataclass(frozen=True)
+class PluginFloor:
+    """The lowest manifesto plugin version a project can bind under, with the reason the version is the floor."""
+
+    version: str
+    reason: str
+
+
+SUBAGENT_HOOK_FLOOR = PluginFloor("4.0.1", "the first version whose subagent hook binds under unharness")
+MAPPING_AGENT_FLOOR = PluginFloor("4.2.0", "the first version whose hooks read an agent written as a mapping")
+
+
+@dataclass(frozen=True)
 class Modes:
     digests: bool
     stack_digests: bool
@@ -119,15 +129,14 @@ def doctor(
         _claude_finding(binary, detected, switches),
         *_switch_findings(switches, override or detected),
         _uv_finding(environ),
-        _manifesto_plugin_finding(login),
     ]
     layout = _layout_findings(project_folder(config_path))
     if has_failed(layout):
-        return [*layout, *host]
+        return [*layout, *host, _manifesto_plugin_finding(login, SUBAGENT_HOOK_FLOOR)]
     try:
         config = load(config_path)
     except UnharnessError as error:
-        return [*layout, Finding(Status.FAIL, "config", str(error)), *host]
+        return [*layout, Finding(Status.FAIL, "config", str(error)), *host, _manifesto_plugin_finding(login, SUBAGENT_HOOK_FLOOR)]
     plugin = manifesto_plugin_dir(config.registry, login)
     match = None if modes.agent is None else subagent_match(modes.agent, list(config.subagents))
     matched = None if match is None else match.key
@@ -159,6 +168,7 @@ def doctor(
         *_block_findings(config, loads_you, matched),
         _preamble_finding(config.directory),
         *host,
+        _manifesto_plugin_finding(login, MAPPING_AGENT_FLOOR if config.mapping_form else SUBAGENT_HOOK_FLOOR),
         *size,
     ]
 
@@ -371,15 +381,15 @@ def _uv_finding(environ: Mapping[str, str]) -> Finding:
     return Finding(Status.OK, UV_BINARY, " ".join(str(path) for path in (uv, uvx) if path))
 
 
-def _manifesto_plugin_finding(login: Path) -> Finding:
-    """Check the installed manifesto plugin is recent enough under unharness."""
+def _manifesto_plugin_finding(login: Path, floor: PluginFloor) -> Finding:
+    """Check that the installed manifesto plugin reaches the floor, naming the floor's reason when it falls below."""
     name = "manifesto plugin"
     versions = _installed_versions(login, MANIFESTO_PLUGIN)
     if not versions:
         return Finding(Status.FAIL, name, f"absent from {login / INSTALLED_PLUGINS_FILE}")
     newest = max(versions, key=version_key)
-    if version_key(newest) < version_key(MINIMUM_MANIFESTO_VERSION):
-        return Finding(Status.FAIL, name, f"{newest} is below {MINIMUM_MANIFESTO_VERSION}, {SUBAGENT_HOOK_FLOOR_REASON}")
+    if version_key(newest) < version_key(floor.version):
+        return Finding(Status.FAIL, name, f"{newest} is below {floor.version}, {floor.reason}")
     return Finding(Status.OK, name, f"{newest}; {SUBAGENT_HOOK_NOTE}")
 
 
