@@ -237,6 +237,21 @@ def _agent(value: list | dict | str | None, agent: str) -> Agent:
     return Agent(elements, _blocks(value.get(BLOCKS_KEY), agent))
 
 
+def _require_agent_keys(fields: dict, agent: str) -> None:
+    """Refuse a mapping agent's first key other than stack: and blocks:, then a mapping agent without stack:."""
+    _refuse_unknown_key(fields, AGENT_KEYS, agent, "agent")
+    if STACK_KEY not in fields:
+        raise UnharnessError(f"no {STACK_KEY}: in {agent}; list its elements under {STACK_KEY}:")
+
+
+def _refuse_unknown_key(fields: dict, known: tuple[str, ...], place: str, kind: str) -> None:
+    """Refuse the mapping's first key outside the known ones, naming it, the place, and the keys a mapping of that kind holds."""
+    unknown = [key for key in fields if key not in known]
+    if unknown:
+        held = " and ".join(f"{key}:" for key in known)
+        raise UnharnessError(f"unknown key '{unknown[0]}' in {place}; a mapping {kind} holds only {held}")
+
+
 def _blocks(value: dict | list | str | None, agent: str) -> list[Block]:
     """Read the agent's blocks in declaration order, none when blocks: is absent or null."""
     if value is None:
@@ -281,21 +296,6 @@ def block_path(agent: str, name: str) -> str:
 def agent_path(key: str | None) -> str:
     """Return the YAML path of the agent: you, or subagents.<key> for a subagents key."""
     return YOU_KEY if key is None else f"{SUBAGENTS_KEY}.{key}"
-
-
-def _require_agent_keys(fields: dict, agent: str) -> None:
-    """Refuse a mapping agent's first key other than stack: and blocks:, then a mapping agent without stack:."""
-    _refuse_unknown_key(fields, AGENT_KEYS, agent, "agent")
-    if STACK_KEY not in fields:
-        raise UnharnessError(f"no {STACK_KEY}: in {agent}; list its elements under {STACK_KEY}:")
-
-
-def _refuse_unknown_key(fields: dict, known: tuple[str, ...], place: str, kind: str) -> None:
-    """Refuse the mapping's first key outside the known ones, naming it, the place, and the keys a mapping of that kind holds."""
-    unknown = [key for key in fields if key not in known]
-    if unknown:
-        held = " and ".join(f"{key}:" for key in known)
-        raise UnharnessError(f"unknown key '{unknown[0]}' in {place}; a mapping {kind} holds only {held}")
 
 
 def _elements(items: list, list_label: str) -> list[Element]:
