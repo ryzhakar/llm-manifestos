@@ -42,6 +42,8 @@ EMPTY_STACK_MESSAGE = "the stack is empty"
 STACK_KEY = "stack"
 BLOCKS_KEY = "blocks"
 AGENT_KEYS = (STACK_KEY, BLOCKS_KEY)
+BLOCK_FILE_KEY = "file"
+RESERVED_BLOCK_NAMES = ("harness", "constitution", "interplay", "commitments", "stack")
 ACTIVE_MANIFESTOS_SECTION = re.compile(r"^## Active Manifestos\n(.*?)(?=^## |\Z)", re.M | re.S)
 SOURCE = re.compile(rf"^({MANIFESTO_SOURCE}|{SKILL_SOURCE}|{FILE_SOURCE}) (\S.*)$")
 MISSING_CONFIG_STATUS = 2
@@ -229,16 +231,64 @@ def _agent(value: list | dict | str | None, agent: str) -> Agent:
         raise UnharnessError(f"{agent} must be a list of elements or a mapping with {STACK_KEY}:")
     _require_agent_keys(value, agent)
     stack = value[STACK_KEY]
-    return Agent(_elements([] if stack is None else stack, f"{agent}.{STACK_KEY}"), [])
+    elements = _elements([] if stack is None else stack, f"{agent}.{STACK_KEY}")
+    return Agent(elements, _blocks(value.get(BLOCKS_KEY), agent))
+
+
+def _blocks(value: dict | list | str | None, agent: str) -> list[Block]:
+    """Read the agent's blocks in declaration order, none when blocks: is absent or null."""
+    if value is None:
+        return []
+    if not isinstance(value, dict):
+        raise UnharnessError(f"{agent}.{BLOCKS_KEY} must map each block name to one line of text or {BLOCK_FILE_KEY}: <path>")
+    return [_block(name, block, agent) for name, block in value.items()]
+
+
+def _block(name: str | None, value: str | dict | list | None, agent: str) -> Block:
+    """Read one block, its name before its value: a line of text, or a mapping whose file: holds a path."""
+    _require_block_name(name, agent)
+    place = block_path(agent, name)
+    if isinstance(value, dict):
+        _refuse_unknown_key(value, (BLOCK_FILE_KEY,), place, "block")
+        return Block(name, None, _required_text(value[BLOCK_FILE_KEY], place))
+    return Block(name, _required_text(value, place), None)
+
+
+def _require_block_name(name: str | None, agent: str) -> None:
+    """Refuse a block name that is not one word, then one that names a tag of the prompt or its session files."""
+    blocks = f"{agent}.{BLOCKS_KEY}"
+    if not name or WHITESPACE.search(name):
+        raise UnharnessError(f"block name '{name or ''}' in {blocks} must be one word")
+    if name in RESERVED_BLOCK_NAMES:
+        reserved = f"{', '.join(RESERVED_BLOCK_NAMES[:-1])}, and {RESERVED_BLOCK_NAMES[-1]}"
+        raise UnharnessError(f"block name '{name}' in {blocks} is reserved; the reserved names are {reserved}")
+
+
+def _required_text(value: str | dict | list | None, place: str) -> str:
+    """Return the value when it is text that holds more than whitespace; refuse anything else, naming the place."""
+    if not isinstance(value, str) or not value.strip():
+        raise UnharnessError(f"{place} must be one line of text or {BLOCK_FILE_KEY}: <path>")
+    return value
+
+
+def block_path(agent: str, name: str) -> str:
+    """Return the YAML path of the agent's block of that name, as messages and doctor name it."""
+    return f"{agent}.{BLOCKS_KEY}.{name}"
 
 
 def _require_agent_keys(fields: dict, agent: str) -> None:
     """Refuse a mapping agent's first key other than stack: and blocks:, then a mapping agent without stack:."""
-    unknown = [key for key in fields if key not in AGENT_KEYS]
-    if unknown:
-        raise UnharnessError(f"unknown key '{unknown[0]}' in {agent}; a mapping agent holds only {STACK_KEY}: and {BLOCKS_KEY}:")
+    _refuse_unknown_key(fields, AGENT_KEYS, agent, "agent")
     if STACK_KEY not in fields:
         raise UnharnessError(f"no {STACK_KEY}: in {agent}; list its elements under {STACK_KEY}:")
+
+
+def _refuse_unknown_key(fields: dict, known: tuple[str, ...], place: str, kind: str) -> None:
+    """Refuse the mapping's first key outside the known ones, naming it, the place, and the keys a mapping of that kind holds."""
+    unknown = [key for key in fields if key not in known]
+    if unknown:
+        held = " and ".join(f"{key}:" for key in known)
+        raise UnharnessError(f"unknown key '{unknown[0]}' in {place}; a mapping {kind} holds only {held}")
 
 
 def _elements(items: list, list_label: str) -> list[Element]:
