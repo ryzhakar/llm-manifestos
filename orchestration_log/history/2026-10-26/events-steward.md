@@ -107,3 +107,4 @@
 2026-11-02T14:59+0200 | self | discovery | the 2.1.310 binary is gone (installed 2.1.312, 2.1.314, 2.1.316); gate re-read in 2.1.316: threshold, reactive, idle, and sleep compaction all stop when the autoCompactEnabled gate is false; window bounds 1e5..1e6 unchanged by reading; the 10-27 answer had listed the threshold path unread, now corrected in answers-owner.md
 2026-11-02T14:59+0200 | self | failure | the turn that ended the 4.1.0 release wrote a full report in the conversation while the silence marker stood, no nudge before it; answers belong in files; no peer reached
 2026-11-02T14:59+0200 | self | decision | card focus drops the stale 4.0.0 clause; no focus [notice]: the change touches no live peer (tell: send only to peers a message concerns); queue 80 added for the owner
+2026-11-02T15:05+0200 | owner | receipt | silence off, conversation wanted; marker .claude/work-silently removed
