@@ -655,7 +655,7 @@ The X1 capture cannot confirm them, since no setting here changes the request bo
 
 # 4.2.0: agent blocks and a minimal harness
 
-The owner's order and rulings for this part are the 2026-11-02 lines from 15:20 on in `2026-10-26/events-steward.md`. The orchestrator's decisions are entries 80-88 of `queue-long-run.md`, which this part cites as queue N; entries 81-85, 87, and 89 bind. Any agent may now carry named instruction blocks, which `prompt` prints between `<harness>` and `<constitution>`, and the shipped `<harness>` shrinks to what the application does. Package and plugin read 4.2.0.
+The owner's order and rulings for this part are the 2026-11-02 lines from 15:20 on in `2026-10-26/events-steward.md`. The orchestrator's decisions are entries 80-88 of `queue-long-run.md`, which this part cites as queue N; entries 81-85, 87, 89, and 91 bind. Any agent may now carry named instruction blocks, which `prompt` prints between `<harness>` and `<constitution>`, and the shipped `<harness>` shrinks to what the application does. Package and plugin read 4.2.0.
 
 ## Config shape (queue 81)
 
@@ -687,19 +687,19 @@ After the 4.0.0 folder-name check of every key, `load` checks `you`, then each k
 
 | Message | Cause |
 |---|---|
-| `<agent> must be a list of elements or a mapping with stack:` | a scalar or a flow list |
-| `unknown key '<key>' in <agent>; a mapping agent holds only stack: and blocks:` | a mapping agent's first key other than `stack` and `blocks` |
-| `no stack: in <agent>; list its elements under stack:` | a mapping agent without `stack` |
+| `<agent> must be a mapping with stack: and optional blocks:, or a list of elements` | a scalar or a flow list |
+| `unknown key '<key>' in <agent>; stack: and blocks: are the only keys a mapping agent holds` | a mapping agent's first key other than `stack` and `blocks` |
+| `no stack: in <agent>; add stack: and list its elements under it` | a mapping agent without `stack` |
 | `<agent>.stack must be a list of elements` | a `stack` that holds a scalar or a mapping |
 | `<agent>.blocks must map each block name to one line of text or file: <path>` | a `blocks` that holds a scalar or a list |
 | `block name '<name>' in <agent>.blocks must be one word` | a name that is empty, as `'': text` gives, or that holds whitespace |
 | `block name '<name>' in <agent>.blocks is reserved; the reserved names are harness, constitution, interplay, commitments, and stack` | a reserved name, matched exactly |
 | `<agent>.blocks.<name> must be one line of text or file: <path>` | a null value, a value empty after stripping, a list, or a `file` that holds no path |
-| `unknown key '<key>' in <agent>.blocks.<name>; a mapping block holds only file:` | a mapping block's first key other than `file` |
+| `unknown key '<key>' in <agent>.blocks.<name>; file: is the only key a mapping block holds` | a mapping block's first key other than `file` |
 | `<agent>.blocks.<name> did not resolve; tried <path>` | no file at the path |
 | `<agent>.blocks.<name> has no text in <path>` | a file empty after frontmatter removal and stripping |
 
-The first row replaces the 4.1.0 message `<list> must be a list of elements` for an agent's value. The last two rows fire when `prompt` or doctor reads the file, never at load. Every other row stops the load, in the hooks as in `unharness`, as every config error does (queue 67). A missing block file therefore unbinds no hook, but a malformed block unbinds every hook until the owner fixes the block.
+No row ends in a colon, since a hook drops one trailing colon from the first line of a message (4.0.0, decision 13), and a colon dropped from a key name would garble the line the hook prints (queue 91). The first row replaces the 4.1.0 message `<list> must be a list of elements` for an agent's value. The last two rows fire when `prompt` or doctor reads the file, never at load. Every other row stops the load, in the hooks as in `unharness`, as every config error does (queue 67). A missing block file therefore unbinds no hook, but a malformed block unbinds every hook until the owner fixes the block.
 
 ## Rendering (queue 83)
 
@@ -772,7 +772,7 @@ The list below gives each change to the starting text, with its cause:
 
 ## Tests
 
-- Config: each form loads to its `Agent`, the flat list included, and `mapping_form` follows the form; each load message prints verbatim; a null `stack:` and a null `blocks:` load empty; an element error in a mapping agent names `element 1 of you.stack`; `--json` prints the same for a config of mapping agents as for the same stacks written as lists; a repeated block name stops the load with the reader's `key 'K' appears twice`.
+- Config: no message of a shape error ends its first line in a colon; each form loads to its `Agent`, the flat list included, and `mapping_form` follows the form; each load message prints verbatim; a null `stack:` and a null `blocks:` load empty; an element error in a mapping agent names `element 1 of you.stack`; `--json` prints the same for a config of mapping agents as for the same stacks written as lists; a repeated block name stops the load with the reader's `key 'K' appears twice`.
 - Hooks: session-start, post-compact, subagent-start, and drift-reminder print the same bytes for a config of mapping agents with blocks, one block naming a missing file, as for the same stacks written as lists; a malformed block makes each binding hook print the `No manifesto bound` line.
 - Rendering: `prompt` prints the shape above verbatim for a line block and for a file block whose file has frontmatter, in declaration order; `--agent` prints the blocks of an exact key, those of `other:` after a fall, and none for a key in the list form; no prompt carries the blocks of another agent; a config without blocks keeps `<constitution>` one blank line after `</harness>`; every mode flag keeps the blocks; a block edit changes no output of `stack` or `stack --diff`; a quoted line keeps its ` #`; a missing file and an empty file each stop `prompt` with their messages.
 - Preamble: the shipped file equals the text above, and the limits test also asserts the absence of "constitution".
