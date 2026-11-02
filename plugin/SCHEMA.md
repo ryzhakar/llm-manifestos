@@ -36,6 +36,20 @@ subagents:
     - first-principles
 ```
 
+### Agents as mappings
+
+Any agent, `you` or a key under `subagents:`, may hold a mapping in place of its list. The list moves under `stack:`, and `blocks:` names the agent's instruction blocks, which `unharness prompt` prints between `<harness>` and `<constitution>`. One config may mix the two forms.
+
+```yaml
+you:
+  stack:
+    - dry
+  blocks:
+    tone: Answer in plain words.
+    reading:
+      file: .manifestos/blocks/reading.md
+```
+
 ---
 
 ## Where the config lives
@@ -44,7 +58,7 @@ subagents:
 2. Only when that file is absent: the `## Active Manifestos` section of the `CLAUDE.md` in the project folder, the folder that holds `.manifestos/`, up to the next `## ` heading, read as the same YAML.
 3. Neither: the hooks stay silent; `unharness` stops with `no config: tried <path> and the Active Manifestos section of <CLAUDE.md path>`.
 
-One module reads it: `unharness/src/unharness/config.py`. The hooks run it with `python3 <config> --json --project <folder>`, which prints `directory` (the project folder), `registry` (the resolved `manifesto_dir`, or empty), and each element's `name`, `purpose`, `source_type`, and `reference`; `unharness` imports it. It needs only the standard library and runs on Python 3.9 or later when run as a script.
+One module reads it: `unharness/src/unharness/config.py`. The hooks run it with `python3 <config> --json --project <folder>`, which prints `directory` (the project folder), `registry` (the resolved `manifesto_dir`, or empty), and each element's `name`, `purpose`, `source_type`, and `reference`; `unharness` imports it. It needs only the standard library and runs on Python 3.9 or later when run as a script. Since `--json` prints each agent's stack alone, under `you` and under each key of `subagents`, whichever form the agent takes, and prints no block, the hooks read a mapping agent as they read a list and ignore its blocks.
 
 ---
 
@@ -72,15 +86,40 @@ A colon not followed by a space belongs to the name: `- agent-conduct:write-well
 
 ---
 
+## Agent forms
+
+An agent is `you` or a key under `subagents:`. Its value takes one of three forms:
+
+**List** — the agent's stack, one element per item. A flat top-level list is the stack of `you`.
+
+**Mapping** — the stack under `stack:` and, optionally, the agent's blocks under `blocks:`. Any other key stops the load, so that a misspelled `blocks:` cannot vanish. A null `stack:` is an empty stack, a null `blocks:` holds no blocks, and a mapping without `stack:` stops the load.
+
+**Null** — an empty stack with no blocks.
+
+`blocks:` maps each block name to one line of text or to a mapping whose one key, `file`, holds a path:
+
+```yaml
+blocks:
+  tone: Answer in plain words.
+  reading:
+    file: .manifestos/blocks/reading.md
+```
+
+A line's text is the scalar as the YAML reader returns it, with one pair of enclosing quotes dropped and a trailing comment cut. Since the reader cuts an unquoted line at its first ` #`, a line that holds ` #` needs quotes, as in `tone: "Mark a heading with # and a space."`. A `file` path resolves against the project folder, the folder that holds `.manifestos/`, as a `file` element's path does, and the block takes the file's text with its frontmatter removed. `unharness prompt` strips either text before it prints the block. A missing file, or one with no text once its frontmatter is gone, stops `prompt`, and doctor reports it. The load never reads the file; a missing file therefore unbinds no hook.
+
+A block name is one word. The names `harness`, `constitution`, `interplay`, `commitments`, and `stack` are reserved, matched exactly, case included, since each names a tag that the prompt or its session files use. A block may share an element's name, because element tags sit inside `<constitution>`.
+
+---
+
 ## Fields
 
 ### Top-level mapping fields
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `you` | list of elements | no | empty | The orchestrator's constitution. |
-| `subagents` | mapping of role to list of elements | no | empty | Constitutions by agent type. A role with no value is an empty list. |
-| `manifesto_dir` | string (path) | no | hooks: `${CLAUDE_PLUGIN_ROOT}`; `unharness`: the manifesto plugin at its highest version in the plugin cache | The folder whose `manifestos/` subfolder is the registry. Ignored in the flat list form. A relative path resolves against the config's folder, to an absolute path with symlinks followed, in the hooks and in `unharness` alike. |
+| `you` | list of elements, or a mapping with `stack:` and `blocks:` | no | empty | The orchestrator's constitution, and in the mapping form its blocks. |
+| `subagents` | mapping of role to an agent: a list of elements, or a mapping with `stack:` and `blocks:` | no | empty | Constitutions by agent type, and in the mapping form their blocks. A role with no value is an empty stack with no blocks. |
+| `manifesto_dir` | string (path) | no | hooks: `${CLAUDE_PLUGIN_ROOT}`; `unharness`: the manifesto plugin at its highest version in the plugin cache | The folder whose `manifestos/` subfolder is the registry. Ignored in the flat list form. A relative path resolves against the project folder, the folder that holds `.manifestos/`, to an absolute path with symlinks followed, in the hooks and in `unharness` alike. |
 
 Any other top-level key is ignored.
 
@@ -99,7 +138,7 @@ Any other top-level key is ignored.
 | none, or `manifesto <name>` | `<registry>/manifestos/<name>.md` (the reference is `name` when no source is given) |
 | `skill <plugin>:<skill>` | `skills/<skill>/SKILL.md` of the plugin at its highest version under `<login>/plugins/cache/<marketplace>/<plugin>/<version>/` |
 | `skill <skill>` | `<login>/skills/<skill>/SKILL.md` |
-| `file <path>` | the file, relative to the folder holding the config |
+| `file <path>` | the file, relative to the project folder, the folder that holds `.manifestos/` |
 | any other first word (a bare path, a URL, a hint), or `manifesto`, `skill`, or `file` with no reference | stops the load, naming the `file <path>` form |
 
 The login folder is `$CLAUDE_CONFIG_DIR`, else `~/.claude`. Versions compare by number, so `1.10.0` is above `1.9.0`. `unharness` strips a text file's frontmatter, only when the line after the opening `---` starts a `key:` line, so a block of prose between two rules stays; it replaces `${CLAUDE_PLUGIN_ROOT}` with the registry's plugin folder or the skill's version folder; a user skill and a file keep the placeholder as written.
@@ -114,12 +153,24 @@ Every error is one line, except the old-layout error, which holds one line per c
 
 UserPromptSubmit prints the message on stderr alone. A missing config is the exception: the hooks stay silent on both streams, and `config.py` exits 2 instead of 1 so they can tell it apart.
 
+In a line, `<agent>` stands for `you` or `subagents.<key>`, and `<list>` for an agent's list of elements: `<agent>` itself, or `<agent>.stack` in the mapping form.
+
 | Line | Cause |
 |------|-------|
 | `no config: tried ...` | no config file and no CLAUDE.md section |
-| `<list> must be a list of elements` | `you` or a role holds a scalar or a flow list such as `[a, b]` |
+| `<agent> must be a list of elements or a mapping with stack:` | an agent holds a scalar or a flow list such as `[a, b]` |
+| `unknown key '<key>' in <agent>; a mapping agent holds only stack: and blocks:` | a mapping agent's first key other than `stack` and `blocks` |
+| `no stack: in <agent>; list its elements under stack:` | a mapping agent without `stack` |
+| `<agent>.stack must be a list of elements` | a `stack` that holds a scalar or a mapping |
+| `<agent>.blocks must map each block name to one line of text or file: <path>` | a `blocks` that holds a scalar or a list |
+| `block name '<name>' in <agent>.blocks must be one word` | a block name that is empty, as `'': text` gives, or that holds whitespace |
+| `block name '<name>' in <agent>.blocks is reserved; the reserved names are harness, constitution, interplay, commitments, and stack` | a reserved block name, matched exactly |
+| `<agent>.blocks.<name> must be one line of text or file: <path>` | a null value, a value empty after stripping, a list, or a `file` that holds no path |
+| `unknown key '<key>' in <agent>.blocks.<name>; a mapping block holds only file:` | a mapping block's first key other than `file` |
+| `<agent>.blocks.<name> did not resolve; tried <path>` | `unharness prompt` or doctor finds no file at a block's path; the load never reads it |
+| `<agent>.blocks.<name> has no text in <path>` | `unharness prompt` or doctor finds a block file empty once its frontmatter is removed and its text stripped |
 | `subagents must be a mapping of role to list of elements` | `subagents` holds a scalar or a list |
-| `element N of <list> has no name; add name: or a file source` | a mapping without `name` and without a `file` source; `<list>` is `you` or `subagents.<role>` |
+| `element N of <list> has no name; add name: or a file source` | an element mapping without `name` and without a `file` source |
 | `element X did not resolve; tried <path>` | the one path the source names does not exist; with no cached plugin the path shows the pattern `plugins/cache/*/<plugin>/*/...` |
 | `element N of <list> has source 'S' that is none of manifesto <name>, skill <plugin>:<skill>, skill <skill>, or file <path>; write a path as file <path>` | a legacy or malformed source |
 | `element N of <list> name 'X' must hold no whitespace; add name:` | a name, or a file stem used as one, that holds whitespace |
@@ -158,12 +209,14 @@ Block mappings and lists of string scalars, indented with spaces. A list must be
 | Key | Meaning |
 |-----|---------|
 | `you:` | Orchestrator constitution. Injected by SessionStart and PostCompact hooks as natural language prose. |
-| `subagents:` | Mapping of agent-type keys. Each key names a list of elements for that agent type. |
+| `subagents:` | Mapping of agent-type keys. Each key holds the agent for that agent type: a list of elements, or a mapping with `stack:` and `blocks:`. |
 | `other:` (under `subagents:`) | The default stack: the key for agents matching no specific key. |
 
 ---
 
 ## Hook behavior
+
+Every hook reads an agent's stack alone, through `config.py --json`, and ignores its blocks: a subagent that SubagentStart binds gets its binding and its stack, never its blocks. Since a malformed block still stops the load, each binding hook prints its `No manifesto bound` line until the owner fixes the block.
 
 ### SessionStart / PostCompact
 
@@ -171,7 +224,7 @@ Read the config through `config.py --json`, render `you:` elements as natural la
 
 | Source | Where |
 |--------|-------|
-| `file <path>` | `read it from <absolute path beside the config>` |
+| `file <path>` | `read it from <absolute path>`, the path resolved against the project folder, the folder that holds `.manifestos/` |
 | `manifesto <name>` | `read it from <manifesto_dir>/manifestos/<name>.md` |
 | `skill <plugin>:<skill>` or `skill <skill>` | `read it from skill <plugin>:<skill>`, or `skill <skill>`, as written |
 | none | `resolve its location via the tiered protocol before binding` |
@@ -237,6 +290,7 @@ The plugin carries `manifestos/` and `digests/` in its own folder. Every hook re
 
 1. Root is a list → treat as `you:` section; no subagent bindings.
 2. Root is a mapping → read `you:`, `subagents:`, and `manifesto_dir:`.
-3. String node in any list → `{name: <string>}`.
-4. Mapping node → `{name:, purpose:, source_type:, reference:}`, the source split into its type and reference; a file source supplies the name when `name` is absent.
-5. Null node → dropped.
+3. Agent, `you:` or a key under `subagents:`, that holds a mapping → its stack from `stack:` and its blocks from `blocks:`, in declaration order; a null agent → an empty stack with no blocks.
+4. String node in any list → `{name: <string>}`.
+5. Mapping node in any list → `{name:, purpose:, source_type:, reference:}`, the source split into its type and reference; a file source supplies the name when `name` is absent.
+6. Null node → dropped.
