@@ -102,9 +102,9 @@ def test_trailing_comments_are_not_part_of_a_value(tmp_path):
 
 
 def test_a_config_that_is_not_a_list_of_elements_stops_the_load(tmp_path):
-    with pytest.raises(UnharnessError, match=r"you must be a list"):
+    with pytest.raises(UnharnessError, match=r"you must be a mapping with stack:"):
         load(write_config(tmp_path, "you: [dry, kiss]\n"))
-    with pytest.raises(UnharnessError, match=r"subagents.other must be a list"):
+    with pytest.raises(UnharnessError, match=r"subagents.other must be a mapping with stack:"):
         load(write_config(tmp_path, "subagents:\n  other: dry\n"))
     with pytest.raises(UnharnessError, match=r"subagents must be a mapping of role to list"):
         load(write_config(tmp_path, "subagents: dry\n"))
@@ -155,7 +155,7 @@ def test_a_script_run_on_a_broken_config_prints_one_line_and_exits_1(tmp_path):
     run = run_config_script("--json", "--project", str(write_config(tmp_path, "you: [dry]\n").parent.parent))
 
     assert (run.returncode, run.stdout) == (1, "")
-    assert run.stderr == "unharness: you must be a list of elements or a mapping with stack:\n"
+    assert run.stderr == "unharness: you must be a mapping with stack: and optional blocks:, or a list of elements\n"
 
 
 def test_a_script_run_with_no_config_prints_one_line_and_exits_2_so_a_hook_can_tell_it_apart(tmp_path):
@@ -414,19 +414,22 @@ def test_each_agent_form_loads_to_its_agent_and_mapping_form_follows_the_form(tm
     assert load(write_config(tmp_path, text)) == Config(you, subagents, tmp_path, None, mapping_form)
 
 
-@pytest.mark.parametrize("text, message", [
-    ("you: dry\n", "you must be a list of elements or a mapping with stack:"),
-    ("you: [dry, kiss]\n", "you must be a list of elements or a mapping with stack:"),
-    ("subagents:\n  other: dry\n", "subagents.other must be a list of elements or a mapping with stack:"),
-    ("you:\n  stak:\n    - dry\n", "unknown key 'stak' in you; a mapping agent holds only stack: and blocks:"),
+AGENT_SHAPE_ERRORS = [
+    ("you: dry\n", "you must be a mapping with stack: and optional blocks:, or a list of elements"),
+    ("you: [dry, kiss]\n", "you must be a mapping with stack: and optional blocks:, or a list of elements"),
+    ("subagents:\n  other: dry\n", "subagents.other must be a mapping with stack: and optional blocks:, or a list of elements"),
+    ("you:\n  stak:\n    - dry\n", "unknown key 'stak' in you; stack: and blocks: are the only keys a mapping agent holds"),
     (
         "subagents:\n  other:\n    stack:\n      - dry\n    block:\n      tone: Be brief.\n",
-        "unknown key 'block' in subagents.other; a mapping agent holds only stack: and blocks:",
+        "unknown key 'block' in subagents.other; stack: and blocks: are the only keys a mapping agent holds",
     ),
-    ("you:\n  blocks:\n    tone: Be brief.\n", "no stack: in you; list its elements under stack:"),
+    ("you:\n  blocks:\n    tone: Be brief.\n", "no stack: in you; add stack: and list its elements under it"),
     ("you:\n  stack: dry\n", "you.stack must be a list of elements"),
     ("you:\n  stack:\n    name: dry\n", "you.stack must be a list of elements"),
-])
+]
+
+
+@pytest.mark.parametrize("text, message", AGENT_SHAPE_ERRORS)
 def test_an_agent_of_the_wrong_shape_stops_the_load_with_its_message(tmp_path, text, message):
     with pytest.raises(UnharnessError) as failure:
         load(write_config(tmp_path, text))
@@ -465,9 +468,8 @@ def test_json_prints_mapping_agents_exactly_as_the_same_stacks_written_as_lists(
 RESERVED_NAMES = ("harness", "constitution", "interplay", "commitments", "stack")
 RESERVED_TAIL = "is reserved; the reserved names are harness, constitution, interplay, commitments, and stack"
 MALFORMED_TONE = "you.blocks.tone must be one line of text or file: <path>"
-
-
-@pytest.mark.parametrize("blocks, message", [
+YOU_BEFORE_BLOCKS = "you:\n  stack:\n    - dry\n  blocks:"
+BLOCK_SHAPE_ERRORS = [
     (" text\n", "you.blocks must map each block name to one line of text or file: <path>"),
     ("\n    - tone\n", "you.blocks must map each block name to one line of text or file: <path>"),
     ("\n    '': text\n", "block name '' in you.blocks must be one word"),
@@ -479,15 +481,33 @@ MALFORMED_TONE = "you.blocks.tone must be one line of text or file: <path>"
     ("\n    tone:\n      - a\n", MALFORMED_TONE),
     ("\n    tone:\n      file:\n", MALFORMED_TONE),
     ("\n    tone:\n      file:\n        - a.md\n", MALFORMED_TONE),
-    ("\n    tone:\n      path: a.md\n", "unknown key 'path' in you.blocks.tone; a mapping block holds only file:"),
-    ("\n    tone:\n      file: a.md\n      path: b.md\n", "unknown key 'path' in you.blocks.tone; a mapping block holds only file:"),
+    ("\n    tone:\n      path: a.md\n", "unknown key 'path' in you.blocks.tone; file: is the only key a mapping block holds"),
+    ("\n    tone:\n      file: a.md\n      path: b.md\n", "unknown key 'path' in you.blocks.tone; file: is the only key a mapping block holds"),
     ("\n    tone: >\n      Be brief.\n", "key 'tone' holds a block scalar; block scalars are not supported; write the value on one line"),
-])
+]
+
+
+@pytest.mark.parametrize("blocks, message", BLOCK_SHAPE_ERRORS)
 def test_a_malformed_block_stops_the_load_with_its_message(tmp_path, blocks, message):
     with pytest.raises(UnharnessError) as failure:
-        load(write_config(tmp_path, f"you:\n  stack:\n    - dry\n  blocks:{blocks}"))
+        load(write_config(tmp_path, f"{YOU_BEFORE_BLOCKS}{blocks}"))
 
     assert str(failure.value) == message
+
+
+def refusal(folder: Path, text: str) -> str:
+    """Return the message of the error that loading the config text raises."""
+    with pytest.raises(UnharnessError) as failure:
+        load(write_config(folder, text))
+    return str(failure.value)
+
+
+def test_no_shape_error_message_ends_its_first_line_in_a_colon(tmp_path):
+    configs = [*(text for text, _ in AGENT_SHAPE_ERRORS), *(f"{YOU_BEFORE_BLOCKS}{blocks}" for blocks, _ in BLOCK_SHAPE_ERRORS)]
+
+    first_lines = [refusal(tmp_path, text).split("\n")[0] for text in configs]
+
+    assert [line for line in first_lines if line.endswith(":")] == []
 
 
 def test_a_block_message_names_a_subagents_key_by_its_path(tmp_path):
@@ -499,9 +519,9 @@ def test_a_block_message_names_a_subagents_key_by_its_path(tmp_path):
 
 @pytest.mark.parametrize("text, first", [
     ("you: dry\nsubagents:\n  a/b:\n", "subagents key 'a/b' cannot name a folder"),
-    ("you: dry\nsubagents:\n  other: dry\n", "you must be a list of elements or a mapping with stack:"),
-    ("subagents:\n  first: dry\n  second:\n    stak:\n", "subagents.first must be a list of elements or a mapping with stack:"),
-    ("you:\n  stack: dry\n  stak:\n", "unknown key 'stak' in you; a mapping agent holds only stack: and blocks:"),
+    ("you: dry\nsubagents:\n  other: dry\n", "you must be a mapping with stack: and optional blocks:, or a list of elements"),
+    ("subagents:\n  first: dry\n  second:\n    stak:\n", "subagents.first must be a mapping with stack: and optional blocks:, or a list of elements"),
+    ("you:\n  stack: dry\n  stak:\n", "unknown key 'stak' in you; stack: and blocks: are the only keys a mapping agent holds"),
     ("you:\n  blocks: text\n  stack: dry\n", "you.stack must be a list of elements"),
     ("you:\n  stack:\n  blocks:\n    tone:\n    harness: text\n", MALFORMED_TONE),
     ("you:\n  stack:\n  blocks:\n    harness:\n", f"block name 'harness' in you.blocks {RESERVED_TAIL}"),

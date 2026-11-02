@@ -230,7 +230,7 @@ def _agent(value: list | dict | str | None, agent: str) -> Agent:
     if isinstance(value, list):
         return Agent(_elements(value, agent), [])
     if not isinstance(value, dict):
-        raise UnharnessError(f"{agent} must be a list of elements or a mapping with {STACK_KEY}:")
+        raise UnharnessError(f"{agent} must be a mapping with {STACK_KEY}: and optional {BLOCKS_KEY}:, or a list of elements")
     _require_agent_keys(value, agent)
     stack = value[STACK_KEY]
     elements = _elements([] if stack is None else stack, f"{agent}.{STACK_KEY}")
@@ -241,15 +241,16 @@ def _require_agent_keys(fields: dict, agent: str) -> None:
     """Refuse a mapping agent's first key other than stack: and blocks:, then a mapping agent without stack:."""
     _refuse_unknown_key(fields, AGENT_KEYS, agent, "agent")
     if STACK_KEY not in fields:
-        raise UnharnessError(f"no {STACK_KEY}: in {agent}; list its elements under {STACK_KEY}:")
+        raise UnharnessError(f"no {STACK_KEY}: in {agent}; add {STACK_KEY}: and list its elements under it")
 
 
 def _refuse_unknown_key(fields: dict, known: tuple[str, ...], place: str, kind: str) -> None:
-    """Refuse the mapping's first key outside the known ones, naming it, the place, and the keys a mapping of that kind holds."""
+    """Refuse the mapping's first key outside the known ones, naming it, the place, and the only keys a mapping of that kind holds."""
     unknown = [key for key in fields if key not in known]
     if unknown:
         held = " and ".join(f"{key}:" for key in known)
-        raise UnharnessError(f"unknown key '{unknown[0]}' in {place}; a mapping {kind} holds only {held}")
+        only = "are the only keys" if len(known) > 1 else "is the only key"
+        raise UnharnessError(f"unknown key '{unknown[0]}' in {place}; {held} {only} a mapping {kind} holds")
 
 
 def _blocks(value: dict | list | str | None, agent: str) -> list[Block]:
