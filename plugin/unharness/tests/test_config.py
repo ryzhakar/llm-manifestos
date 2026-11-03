@@ -22,6 +22,9 @@ from unharness.resolve import resolve_stack
 CONFIG_SCRIPT = Path(__file__).parent.parent / "src" / "unharness" / "config.py"
 AGENT_VALUE_TAIL = "must be a mapping with stack: and optional blocks:, or a list of elements"
 AGENT_VALUE_MESSAGE = f"you {AGENT_VALUE_TAIL}"
+STACK_VALUE_MESSAGE = "you.stack must be a list of elements"
+BLOCKS_VALUE_MESSAGE = "you.blocks must map each block name to one line of text or file: <path>"
+SUBAGENTS_VALUE_MESSAGE = "subagents must be a mapping of role to list of elements"
 
 
 def write_config(folder: Path, text: str) -> Path:
@@ -101,11 +104,6 @@ def test_trailing_comments_are_not_part_of_a_value(tmp_path):
 
     assert config.registry == Path("/plugins/manifesto")
     assert config.you.stack == [Element("dry", "one home", "skill", "a:b")]
-
-
-def test_a_subagents_value_that_is_not_a_mapping_stops_the_load(tmp_path):
-    with pytest.raises(UnharnessError, match=r"subagents must be a mapping of role to list"):
-        load(write_config(tmp_path, "subagents: dry\n"))
 
 
 def test_a_colon_without_a_space_after_it_is_part_of_a_bare_name(tmp_path):
@@ -424,10 +422,11 @@ AGENT_SHAPE_ERRORS = [
     ),
     ("you:\n  stack:\n  : dry\n", "unknown key '' in you; stack: and blocks: are the only keys a mapping agent holds"),
     ("you:\n  blocks:\n    tone: Be brief.\n", "no stack: in you; add stack: and list its elements under it"),
-    ("you:\n  stack: dry\n", "you.stack must be a list of elements"),
-    ("you:\n  stack:\n    name: dry\n", "you.stack must be a list of elements"),
-    ("you:\n  stack: ''\n", "you.stack must be a list of elements"),
-    ("subagents: ''\n", "subagents must be a mapping of role to list of elements"),
+    ("you:\n  stack: dry\n", STACK_VALUE_MESSAGE),
+    ("you:\n  stack:\n    name: dry\n", STACK_VALUE_MESSAGE),
+    ("you:\n  stack: ''\n", STACK_VALUE_MESSAGE),
+    ("subagents: dry\n", SUBAGENTS_VALUE_MESSAGE),
+    ("subagents: ''\n", SUBAGENTS_VALUE_MESSAGE),
 ]
 
 
@@ -476,9 +475,9 @@ RESERVED_TAIL = "is reserved; the reserved names are harness, constitution, inte
 MALFORMED_TONE = "you.blocks.tone must be one line of text or file: <path>"
 YOU_BEFORE_BLOCKS = "you:\n  stack:\n    - dry\n  blocks:"
 BLOCK_SHAPE_ERRORS = [
-    (" text\n", "you.blocks must map each block name to one line of text or file: <path>"),
-    ("\n    - tone\n", "you.blocks must map each block name to one line of text or file: <path>"),
-    (" ''\n", "you.blocks must map each block name to one line of text or file: <path>"),
+    (" text\n", BLOCKS_VALUE_MESSAGE),
+    ("\n    - tone\n", BLOCKS_VALUE_MESSAGE),
+    (" ''\n", BLOCKS_VALUE_MESSAGE),
     ("\n    '': text\n", "block name '' in you.blocks must be one word"),
     ("\n    : text\n", "block name '' in you.blocks must be one word"),
     ("\n    \"my tone\": text\n", "block name 'my tone' in you.blocks must be one word"),
@@ -530,7 +529,7 @@ def test_a_block_message_names_a_subagents_key_by_its_path(tmp_path):
     ("you: dry\nsubagents:\n  other: dry\n", AGENT_VALUE_MESSAGE),
     ("subagents:\n  first: dry\n  second:\n    stak:\n", f"subagents.first {AGENT_VALUE_TAIL}"),
     ("you:\n  stack: dry\n  stak:\n", "unknown key 'stak' in you; stack: and blocks: are the only keys a mapping agent holds"),
-    ("you:\n  blocks: text\n  stack: dry\n", "you.stack must be a list of elements"),
+    ("you:\n  blocks: text\n  stack: dry\n", STACK_VALUE_MESSAGE),
     ("you:\n  stack:\n  blocks:\n    tone:\n    harness: text\n", MALFORMED_TONE),
     ("you:\n  stack:\n  blocks:\n    harness:\n", f"block name 'harness' in you.blocks {RESERVED_TAIL}"),
 ])
