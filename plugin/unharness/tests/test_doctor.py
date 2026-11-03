@@ -5,7 +5,7 @@ import socket
 from pathlib import Path
 
 import pytest
-from helpers import write
+from helpers import UNREADABLE_FILES, write, write_not_utf_8
 from unharness.cli import main
 from unharness.compile import stack_block
 from unharness.config import load
@@ -998,8 +998,11 @@ def empty(path: Path) -> None:
     write(path, "---\ntitle: Empty\n---\n\n")
 
 
+LOADED_AGENT_STATUSES = [((), "FAIL", "WARN"), (("--agent", "implementer"), "WARN", "FAIL")]
+
+
 @pytest.mark.parametrize("spoil, problem", [(remove, "did not resolve; tried"), (empty, "has no text in")])
-@pytest.mark.parametrize("arguments, you_status, implementer_status", [((), "FAIL", "WARN"), (("--agent", "implementer"), "WARN", "FAIL")])
+@pytest.mark.parametrize("arguments, you_status, implementer_status", LOADED_AGENT_STATUSES)
 def test_a_missing_or_empty_block_file_fails_for_the_loaded_agent_and_warns_for_another(
     host, blocks_project, capsys, spoil, problem, arguments, you_status, implementer_status,
 ):
@@ -1014,6 +1017,40 @@ def test_a_missing_or_empty_block_file_fails_for_the_loaded_agent_and_warns_for_
     assert finding(lines, "subagents.implementer.blocks.scope") == (
         f"{implementer_status} subagents.implementer.blocks.scope: subagents.implementer.blocks.scope {problem} {scope}"
     )
+
+
+def checks(lines: list[str]) -> list[str]:
+    """Return the check name of each doctor line, its status left out."""
+    return [line.split(": ")[0].partition(" ")[2] for line in lines]
+
+
+@pytest.mark.parametrize("spoil, reason", UNREADABLE_FILES)
+@pytest.mark.parametrize("arguments, you_status, implementer_status", LOADED_AGENT_STATUSES)
+def test_a_block_file_that_cannot_be_read_fails_for_the_loaded_agent_and_warns_for_another_among_every_check(
+    host, blocks_project, capsys, spoil, reason, arguments, you_status, implementer_status,
+):
+    folder = blocks_project.parent.parent
+    _, before = doctor(capsys, "--config", str(blocks_project), *arguments)
+    reading, scope = spoil(folder / ".manifestos/blocks/reading.md"), spoil(folder / "scope.md")
+
+    _, lines = doctor(capsys, "--config", str(blocks_project), *arguments)
+
+    assert finding(lines, "you.blocks.reading") == f"{you_status} you.blocks.reading: you.blocks.reading file {reading} cannot be read: {reason}"
+    assert finding(lines, "subagents.implementer.blocks.scope") == (
+        f"{implementer_status} subagents.implementer.blocks.scope: subagents.implementer.blocks.scope file {scope} cannot be read: {reason}"
+    )
+    assert checks(lines) == checks(before)
+
+
+def test_a_file_element_that_is_not_utf_8_fails_its_line_and_prints_the_checks_a_missing_file_prints(host, project, capsys):
+    write(project, CONFIG + "  - name: rules\n    source: file rules.md\n")
+    _, missing = doctor(capsys, "--config", str(project))
+    rules = write_not_utf_8(project.parent.parent / "rules.md")
+
+    status, lines = doctor(capsys, "--config", str(project))
+
+    assert finding(lines, "element rules") == f"FAIL element rules: element rules file {rules} cannot be read: not UTF-8 text"
+    assert (status, checks(lines)) == (1, checks(missing))
 
 
 def test_block_lines_stay_when_an_element_fails(host, blocks_project, capsys):

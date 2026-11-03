@@ -13,6 +13,7 @@ FRONTMATTER = re.compile(r"\A---\n(?=[A-Za-z_][\w-]*:).*?\n---\n", re.S)
 LOGIN_VARIABLE = "CLAUDE_CONFIG_DIR"
 MANIFESTO_PLUGIN = "manifesto"
 PLUGIN_SKILL_SEPARATOR = ":"
+NOT_UTF_8_TEXT = "not UTF-8 text"
 
 
 @dataclass(frozen=True)
@@ -56,7 +57,7 @@ def resolve_block(block: Block, agent: str, directory: Path) -> Document:
     place = block_path(agent, block.name)
     if not path.is_file():
         raise UnharnessError(f"{place} did not resolve; tried {path}")
-    text = _body(path)
+    text = _body(path, place)
     if not text:
         raise UnharnessError(f"{place} has no text in {path}")
     return Document(block.name, None, text)
@@ -71,7 +72,7 @@ def _resolve_element(element: Element, directory: Path, registry: Path | None, l
     path, plugin_root = locate(element, directory, registry, login)
     if not path.is_file():
         raise UnharnessError(f"element {element.name} did not resolve; tried {path}")
-    body = _body(path)
+    body = _body(path, f"element {element.name}")
     return Document(
         element.name,
         element.purpose,
@@ -80,9 +81,17 @@ def _resolve_element(element: Element, directory: Path, registry: Path | None, l
     )
 
 
-def _body(path: Path) -> str:
-    """Return the file's text with its frontmatter removed, stripped."""
-    return FRONTMATTER.sub("", path.read_text(encoding=TEXT_ENCODING)).strip()
+def _body(path: Path, place: str) -> str:
+    """Return the file's text with its frontmatter removed, stripped, else stop with a line naming the place, the path, and why the file cannot be read."""
+    try:
+        text = path.read_text(encoding=TEXT_ENCODING)
+    except UnicodeDecodeError:
+        reason = NOT_UTF_8_TEXT
+    except OSError as error:
+        reason = error.strerror
+    else:
+        return FRONTMATTER.sub("", text).strip()
+    raise UnharnessError(f"{place} file {path} cannot be read: {reason}")
 
 
 def locate(element: Element, directory: Path, registry: Path | None, login: Path) -> tuple[Path, Path | None]:
