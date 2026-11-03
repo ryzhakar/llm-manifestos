@@ -11,6 +11,8 @@ from unharness.config import load
 from unharness.resolve import resolve_stack
 
 CONFIG = "you:\n  - name: dry\n    purpose: one home\n  - name: write-well\n    source: skill agent-conduct:write-well\n"
+SHIPPED_PREAMBLE = files("unharness").joinpath("preamble.md").read_text(encoding="utf-8")
+SHIPPED_HARNESS = f"<harness>\n{SHIPPED_PREAMBLE.strip()}\n</harness>"
 
 
 @pytest.fixture
@@ -48,16 +50,15 @@ def write_session_files(project: Path, login: Path) -> None:
 def test_the_prompt_verb_prints_the_compiled_prompt_with_the_shipped_preamble(login, project, tmp_path):
     write_session_files(project, login)
     documents = documents_of(project, login)
-    shipped_preamble = files("unharness").joinpath("preamble.md").read_text()
 
     run = unharness(login, "prompt", "--config", str(project / ".manifestos/config.yaml"), cwd=tmp_path)
 
     assert run.returncode == 0
     assert run.stdout == compile_prompt(
-        documents, shipped_preamble,
+        documents, SHIPPED_PREAMBLE,
         (project / ".manifestos/interplay.md").read_text(), (project / ".manifestos/commitments.md").read_text(),
     ) + "\n"
-    assert run.stdout.startswith(f"<harness>\n{shipped_preamble.strip()}\n</harness>\n\n<constitution>\n")
+    assert run.stdout.startswith(f"{SHIPPED_HARNESS}\n\n<constitution>\n")
     assert run.stdout.endswith("<commitments>\nI must, and I will.\n</commitments>\n")
 
 
@@ -127,10 +128,8 @@ def test_the_cached_prompt_is_utf_8_whatever_the_locale(tmp_path):
 
 
 def test_the_shipped_preamble_stays_within_25_lines_and_names_no_tool_and_no_constitution():
-    preamble = files("unharness").joinpath("preamble.md").read_text(encoding="utf-8")
-
-    assert len(preamble.splitlines()) <= 25
-    assert not [word for word in ("unharness", "compil", "constitution") if word in preamble.lower()]
+    assert len(SHIPPED_PREAMBLE.splitlines()) <= 25
+    assert not [word for word in ("unharness", "compil", "constitution") if word in SHIPPED_PREAMBLE.lower()]
 
 
 SHIPPED_PREAMBLE_PARAGRAPHS = (
@@ -154,9 +153,7 @@ SHIPPED_PREAMBLE_PARAGRAPHS = (
 
 
 def test_the_shipped_preamble_holds_the_minimal_harness_text():
-    preamble = files("unharness").joinpath("preamble.md").read_text(encoding="utf-8")
-
-    assert preamble == "\n\n".join(SHIPPED_PREAMBLE_PARAGRAPHS) + "\n"
+    assert SHIPPED_PREAMBLE == "\n\n".join(SHIPPED_PREAMBLE_PARAGRAPHS) + "\n"
 
 
 def write_minified_files(project: Path, login: Path) -> None:
@@ -257,7 +254,7 @@ BLOCKS_CONFIG = (
     "you:\n  stack:\n    - name: dry\n      purpose: one home\n"
     "  blocks:\n    tone: Answer in plain words.\n    reading:\n      file: notes/reading.md\n"
 )
-SHIPPED_HARNESS = "<harness>\n" + files("unharness").joinpath("preamble.md").read_text().strip() + "\n</harness>"
+BLOCKS_PREFIX = f"{SHIPPED_HARNESS}\n\n<tone>\nAnswer in plain words.\n</tone>\n\n<reading>\nRead the date.\n</reading>\n\n<constitution>\n"
 
 
 @pytest.fixture
@@ -273,9 +270,7 @@ def test_prompt_prints_the_blocks_in_declaration_order_between_harness_and_const
     run = unharness(login, "prompt", cwd=blocks_project)
 
     assert run.returncode == 0, run.stderr
-    assert run.stdout.startswith(
-        f"{SHIPPED_HARNESS}\n\n<tone>\nAnswer in plain words.\n</tone>\n\n<reading>\nRead the date.\n</reading>\n\n<constitution>\n"
-    )
+    assert run.stdout.startswith(BLOCKS_PREFIX)
 
 
 def test_a_missing_block_file_stops_prompt_before_the_session_files_are_checked(login, blocks_project):
@@ -316,9 +311,6 @@ def test_a_file_element_that_is_not_utf_8_stops_prompt_with_its_own_line(login, 
 
     assert (run.returncode, run.stdout) == (1, "")
     assert run.stderr == f"unharness: element rules file {tmp_path.resolve() / 'rules.md'} cannot be read: not UTF-8 text\n"
-
-
-BLOCKS_PREFIX = f"{SHIPPED_HARNESS}\n\n<tone>\nAnswer in plain words.\n</tone>\n\n<reading>\nRead the date.\n</reading>\n\n<constitution>\n"
 
 
 @pytest.mark.parametrize("flags", [
