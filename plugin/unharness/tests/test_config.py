@@ -20,6 +20,8 @@ from unharness.config import (
 from unharness.resolve import resolve_stack
 
 CONFIG_SCRIPT = Path(__file__).parent.parent / "src" / "unharness" / "config.py"
+AGENT_VALUE_TAIL = "must be a mapping with stack: and optional blocks:, or a list of elements"
+AGENT_VALUE_MESSAGE = f"you {AGENT_VALUE_TAIL}"
 
 
 def write_config(folder: Path, text: str) -> Path:
@@ -101,11 +103,7 @@ def test_trailing_comments_are_not_part_of_a_value(tmp_path):
     assert config.you.stack == [Element("dry", "one home", "skill", "a:b")]
 
 
-def test_a_config_that_is_not_a_list_of_elements_stops_the_load(tmp_path):
-    with pytest.raises(UnharnessError, match=r"you must be a mapping with stack:"):
-        load(write_config(tmp_path, "you: [dry, kiss]\n"))
-    with pytest.raises(UnharnessError, match=r"subagents.other must be a mapping with stack:"):
-        load(write_config(tmp_path, "subagents:\n  other: dry\n"))
+def test_a_subagents_value_that_is_not_a_mapping_stops_the_load(tmp_path):
     with pytest.raises(UnharnessError, match=r"subagents must be a mapping of role to list"):
         load(write_config(tmp_path, "subagents: dry\n"))
 
@@ -155,7 +153,7 @@ def test_a_script_run_on_a_broken_config_prints_one_line_and_exits_1(tmp_path):
     run = run_config_script("--json", "--project", str(write_config(tmp_path, "you: [dry]\n").parent.parent))
 
     assert (run.returncode, run.stdout) == (1, "")
-    assert run.stderr == "unharness: you must be a mapping with stack: and optional blocks:, or a list of elements\n"
+    assert run.stderr == f"unharness: {AGENT_VALUE_MESSAGE}\n"
 
 
 def test_a_script_run_with_no_config_prints_one_line_and_exits_2_so_a_hook_can_tell_it_apart(tmp_path):
@@ -415,10 +413,10 @@ def test_each_agent_form_loads_to_its_agent_and_mapping_form_follows_the_form(tm
 
 
 AGENT_SHAPE_ERRORS = [
-    ("you: dry\n", "you must be a mapping with stack: and optional blocks:, or a list of elements"),
-    ("you: [dry, kiss]\n", "you must be a mapping with stack: and optional blocks:, or a list of elements"),
-    ("you: ''\n", "you must be a mapping with stack: and optional blocks:, or a list of elements"),
-    ("subagents:\n  other: dry\n", "subagents.other must be a mapping with stack: and optional blocks:, or a list of elements"),
+    ("you: dry\n", AGENT_VALUE_MESSAGE),
+    ("you: [dry, kiss]\n", AGENT_VALUE_MESSAGE),
+    ("you: ''\n", AGENT_VALUE_MESSAGE),
+    ("subagents:\n  other: dry\n", f"subagents.other {AGENT_VALUE_TAIL}"),
     ("you:\n  stak:\n    - dry\n", "unknown key 'stak' in you; stack: and blocks: are the only keys a mapping agent holds"),
     (
         "subagents:\n  other:\n    stack:\n      - dry\n    block:\n      tone: Be brief.\n",
@@ -529,8 +527,8 @@ def test_a_block_message_names_a_subagents_key_by_its_path(tmp_path):
 
 @pytest.mark.parametrize("text, first", [
     ("you: dry\nsubagents:\n  a/b:\n", "subagents key 'a/b' cannot name a folder"),
-    ("you: dry\nsubagents:\n  other: dry\n", "you must be a mapping with stack: and optional blocks:, or a list of elements"),
-    ("subagents:\n  first: dry\n  second:\n    stak:\n", "subagents.first must be a mapping with stack: and optional blocks:, or a list of elements"),
+    ("you: dry\nsubagents:\n  other: dry\n", AGENT_VALUE_MESSAGE),
+    ("subagents:\n  first: dry\n  second:\n    stak:\n", f"subagents.first {AGENT_VALUE_TAIL}"),
     ("you:\n  stack: dry\n  stak:\n", "unknown key 'stak' in you; stack: and blocks: are the only keys a mapping agent holds"),
     ("you:\n  blocks: text\n  stack: dry\n", "you.stack must be a list of elements"),
     ("you:\n  stack:\n  blocks:\n    tone:\n    harness: text\n", MALFORMED_TONE),
