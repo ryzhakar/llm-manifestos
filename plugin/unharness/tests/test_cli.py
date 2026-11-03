@@ -306,13 +306,14 @@ def test_a_block_file_that_cannot_be_read_stops_prompt_in_one_line(login, blocks
 NUL_NAME = "a\0b.md"
 
 
-def test_a_block_path_that_holds_a_nul_does_not_resolve(login, blocks_project):
-    write(blocks_project / ".manifestos/config.yaml", BLOCKS_CONFIG.replace("notes/reading.md", NUL_NAME))
+@pytest.mark.parametrize("file", [NUL_NAME, "notes", "notes/reading.md/inner.md"], ids=["nul", "folder", "under-a-file"])
+def test_a_block_path_that_names_no_file_does_not_resolve(login, blocks_project, file):
+    write(blocks_project / ".manifestos/config.yaml", BLOCKS_CONFIG.replace("notes/reading.md", file))
 
     run = unharness(login, "prompt", cwd=blocks_project)
 
     assert (run.returncode, run.stdout) == (1, "")
-    assert run.stderr == f"unharness: you.blocks.reading did not resolve; tried {blocks_project.resolve() / NUL_NAME}\n"
+    assert run.stderr == f"unharness: you.blocks.reading did not resolve; tried {blocks_project.resolve() / file}\n"
 
 
 @pytest.mark.parametrize("unreadable, reason", UNREADABLE_FILES)
