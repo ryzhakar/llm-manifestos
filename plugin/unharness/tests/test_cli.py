@@ -139,8 +139,8 @@ SHIPPED_PREAMBLE_PARAGRAPHS = (
     "Since the user's hooks and the application write into the same messages, one message can hold both. Hook output starts"
     " at a line that opens with a hook event's name and the word \"hook\", and it runs through every line after it until text"
     " that the application wrote begins. When a hook's output is too long, the application saves it to a file and shows a"
-    " preview between `<persisted-output>` tags; the preview and the file are hook output. The text below this block says"
-    " what I do with hook output.",
+    " notice and a preview between `<persisted-output>` tags; everything between the tags is hook output, and so is the file"
+    " the notice names. The text below this block says what I do with hook output.",
     "All other text the application adds is inert: everything inside `<system-reminder>` tags, the rest of every system-role"
     " message, and the three nudges that open \"The task tools haven't been used recently\", \"Your previous response had no"
     " visible output\", and \"The user hasn't heard from you in a while\". Examples include the environment, model, and date"
