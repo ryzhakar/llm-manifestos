@@ -417,6 +417,7 @@ def test_each_agent_form_loads_to_its_agent_and_mapping_form_follows_the_form(tm
 AGENT_SHAPE_ERRORS = [
     ("you: dry\n", "you must be a mapping with stack: and optional blocks:, or a list of elements"),
     ("you: [dry, kiss]\n", "you must be a mapping with stack: and optional blocks:, or a list of elements"),
+    ("you: ''\n", "you must be a mapping with stack: and optional blocks:, or a list of elements"),
     ("subagents:\n  other: dry\n", "subagents.other must be a mapping with stack: and optional blocks:, or a list of elements"),
     ("you:\n  stak:\n    - dry\n", "unknown key 'stak' in you; stack: and blocks: are the only keys a mapping agent holds"),
     (
@@ -427,6 +428,8 @@ AGENT_SHAPE_ERRORS = [
     ("you:\n  blocks:\n    tone: Be brief.\n", "no stack: in you; add stack: and list its elements under it"),
     ("you:\n  stack: dry\n", "you.stack must be a list of elements"),
     ("you:\n  stack:\n    name: dry\n", "you.stack must be a list of elements"),
+    ("you:\n  stack: ''\n", "you.stack must be a list of elements"),
+    ("subagents: ''\n", "subagents must be a mapping of role to list of elements"),
 ]
 
 
@@ -438,10 +441,14 @@ def test_an_agent_of_the_wrong_shape_stops_the_load_with_its_message(tmp_path, t
     assert str(failure.value) == message
 
 
-def test_a_null_stack_and_a_null_blocks_load_empty(tmp_path):
-    config = load(write_config(tmp_path, "you:\n  stack:\n  blocks: ~\nsubagents:\n  other:\n    stack: ~\n"))
+@pytest.mark.parametrize("text, you, subagents", [
+    ("you:\n  stack:\n  blocks: ~\nsubagents:\n  other:\n    stack: ~\n", Agent([], []), {"other": Agent([], [])}),
+    ("you:\n  - dry\nsubagents: ~\n", Agent([DRY], []), {}),
+])
+def test_a_null_stack_blocks_or_subagents_loads_empty(tmp_path, text, you, subagents):
+    config = load(write_config(tmp_path, text))
 
-    assert (config.you, config.subagents) == (Agent([], []), {"other": Agent([], [])})
+    assert (config.you, config.subagents) == (you, subagents)
 
 
 def test_an_element_error_in_a_mapping_agent_names_the_element_in_its_stack_list(tmp_path):
@@ -473,6 +480,7 @@ YOU_BEFORE_BLOCKS = "you:\n  stack:\n    - dry\n  blocks:"
 BLOCK_SHAPE_ERRORS = [
     (" text\n", "you.blocks must map each block name to one line of text or file: <path>"),
     ("\n    - tone\n", "you.blocks must map each block name to one line of text or file: <path>"),
+    (" ''\n", "you.blocks must map each block name to one line of text or file: <path>"),
     ("\n    '': text\n", "block name '' in you.blocks must be one word"),
     ("\n    : text\n", "block name '' in you.blocks must be one word"),
     ("\n    \"my tone\": text\n", "block name 'my tone' in you.blocks must be one word"),

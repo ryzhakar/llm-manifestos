@@ -146,7 +146,7 @@ def load(path: Path) -> Config:
     if isinstance(root, list):
         root = {YOU_KEY: root}
     root = root or {}
-    roles = root.get(SUBAGENTS_KEY) or {}
+    roles = {} if root.get(SUBAGENTS_KEY) is None else root[SUBAGENTS_KEY]
     if not isinstance(roles, dict):
         raise UnharnessError("subagents must be a mapping of role to list of elements")
     for key in roles:
