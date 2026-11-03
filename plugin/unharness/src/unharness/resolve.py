@@ -49,12 +49,12 @@ def resolve_stack(elements: list[Element], directory: Path, registry: Path | Non
     return [_resolve_element(element, directory, registry, login) for element in elements]
 
 
-def resolve_block(block: Block, agent: str, directory: Path) -> Document:
+def resolve_block(block: Block, agent_label: str, directory: Path) -> Document:
     """Return the agent's block as a Document without a purpose, its line or its file's text read as a file element's, stripped."""
     if block.file is None:
         return Document(block.name, None, block.line.strip())
     path = locate_block(block, directory)
-    place = block_path(agent, block.name)
+    place = block_path(agent_label, block.name)
     if not path.is_file():
         raise UnharnessError(f"{place} did not resolve; tried {path}")
     text = _body(path, place)

@@ -258,11 +258,11 @@ def _subagent_block_findings(config: Config, matched: str | None) -> list[Findin
     ]
 
 
-def _block_outcome(block: Block, agent: str, directory: Path, loaded: bool) -> tuple[Finding, Document | None]:
+def _block_outcome(block: Block, agent_label: str, directory: Path, loaded: bool) -> tuple[Finding, Document | None]:
     """Report the block by its path, one line or its file's path, else why its file cannot load; return its Document when it loads."""
-    name = block_path(agent, block.name)
+    name = block_path(agent_label, block.name)
     try:
-        document = resolve_block(block, agent, directory)
+        document = resolve_block(block, agent_label, directory)
     except UnharnessError as error:
         return Finding(Status.FAIL if loaded else Status.WARN, name, str(error)), None
     return Finding(Status.OK, name, ONE_LINE if block.file is None else str(locate_block(block, directory))), document

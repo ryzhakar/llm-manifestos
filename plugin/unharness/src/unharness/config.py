@@ -223,25 +223,25 @@ def _config_text(path: Path, project: Path) -> str:
     return section.group(1)
 
 
-def _agent(value: list | dict | str | None, agent: str) -> Agent:
+def _agent(value: list | dict | str | None, agent_label: str) -> Agent:
     """Read an agent's value, a list of elements, a mapping that lists them under stack:, or null, into its Agent."""
     if value is None:
         return Agent([], [])
     if isinstance(value, list):
-        return Agent(_elements(value, agent), [])
+        return Agent(_elements(value, agent_label), [])
     if not isinstance(value, dict):
-        raise UnharnessError(f"{agent} must be a mapping with {STACK_KEY}: and optional {BLOCKS_KEY}:, or a list of elements")
-    _require_agent_keys(value, agent)
+        raise UnharnessError(f"{agent_label} must be a mapping with {STACK_KEY}: and optional {BLOCKS_KEY}:, or a list of elements")
+    _require_agent_keys(value, agent_label)
     stack = value[STACK_KEY]
-    elements = _elements([] if stack is None else stack, f"{agent}.{STACK_KEY}")
-    return Agent(elements, _blocks(value.get(BLOCKS_KEY), agent))
+    elements = _elements([] if stack is None else stack, f"{agent_label}.{STACK_KEY}")
+    return Agent(elements, _blocks(value.get(BLOCKS_KEY), agent_label))
 
 
-def _require_agent_keys(fields: dict, agent: str) -> None:
+def _require_agent_keys(fields: dict, agent_label: str) -> None:
     """Refuse a mapping agent's first key other than stack: and blocks:, then a mapping agent without stack:."""
-    _refuse_unknown_key(fields, AGENT_KEYS, agent, "agent")
+    _refuse_unknown_key(fields, AGENT_KEYS, agent_label, "agent")
     if STACK_KEY not in fields:
-        raise UnharnessError(f"no {STACK_KEY}: in {agent}; add {STACK_KEY}: and list its elements under it")
+        raise UnharnessError(f"no {STACK_KEY}: in {agent_label}; add {STACK_KEY}: and list its elements under it")
 
 
 def _refuse_unknown_key(fields: dict, known: tuple[str, ...], place: str, kind: str) -> None:
@@ -253,28 +253,28 @@ def _refuse_unknown_key(fields: dict, known: tuple[str, ...], place: str, kind: 
         raise UnharnessError(f"unknown key '{unknown[0] or ''}' in {place}; {held} {only} a mapping {kind} holds")
 
 
-def _blocks(value: dict | list | str | None, agent: str) -> list[Block]:
+def _blocks(value: dict | list | str | None, agent_label: str) -> list[Block]:
     """Read the agent's blocks in declaration order, none when blocks: is absent or null."""
     if value is None:
         return []
     if not isinstance(value, dict):
-        raise UnharnessError(f"{agent}.{BLOCKS_KEY} must map each block name to one line of text or {BLOCK_FILE_KEY}: <path>")
-    return [_block(name, block, agent) for name, block in value.items()]
+        raise UnharnessError(f"{agent_label}.{BLOCKS_KEY} must map each block name to one line of text or {BLOCK_FILE_KEY}: <path>")
+    return [_block(name, block, agent_label) for name, block in value.items()]
 
 
-def _block(name: str | None, value: str | dict | list | None, agent: str) -> Block:
+def _block(name: str | None, value: str | dict | list | None, agent_label: str) -> Block:
     """Read one block, its name before its value: a line of text, or a mapping whose file: holds a path."""
-    _require_block_name(name, agent)
-    place = block_path(agent, name)
+    _require_block_name(name, agent_label)
+    place = block_path(agent_label, name)
     if isinstance(value, dict):
         _refuse_unknown_key(value, (BLOCK_FILE_KEY,), place, "block")
         return Block(name, None, _required_text(value[BLOCK_FILE_KEY], place))
     return Block(name, _required_text(value, place), None)
 
 
-def _require_block_name(name: str | None, agent: str) -> None:
+def _require_block_name(name: str | None, agent_label: str) -> None:
     """Refuse a block name that is not one word, then one that names a tag of the prompt or its session files."""
-    blocks = f"{agent}.{BLOCKS_KEY}"
+    blocks = f"{agent_label}.{BLOCKS_KEY}"
     if not name or WHITESPACE.search(name):
         raise UnharnessError(f"block name '{name or ''}' in {blocks} must be one word")
     if name in RESERVED_BLOCK_NAMES:
@@ -289,9 +289,9 @@ def _required_text(value: str | dict | list | None, place: str) -> str:
     return value
 
 
-def block_path(agent: str, name: str) -> str:
+def block_path(agent_label: str, name: str) -> str:
     """Return the YAML path of the agent's block of that name, as messages and doctor name it."""
-    return f"{agent}.{BLOCKS_KEY}.{name}"
+    return f"{agent_label}.{BLOCKS_KEY}.{name}"
 
 
 def agent_path(key: str | None) -> str:
