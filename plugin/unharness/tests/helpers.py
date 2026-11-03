@@ -10,7 +10,7 @@ import pytest
 
 NOT_UTF_8_BYTES = b"Caf\xe9\n"
 NO_PERMISSIONS = 0o000
-LONG_NAME = "n" * 300 + ".md"
+LONG_NAME = "n" * 297 + ".md"
 
 
 def write(path: Path, text: str) -> Path:
