@@ -127,7 +127,7 @@ class ConfigProblems(unittest.TestCase):
             r = run_hook(script, "you: [first-principles]\n", stdin=json.dumps({"agent_type": "worker"}))
             self.assertEqual(r.returncode, 0, script)
             self.assertEqual(r.stderr, f"unharness: {message}\n", script)
-            self.assertEqual(bound_line(script, r.stdout), f"No manifesto bound: {message}; run unharness doctor for the fix.", script)
+            self.assertEqual(bound_line(script, r.stdout), unbound_line(message), script)
 
     def test_a_legacy_source_is_refused_in_one_line_in_every_binding_hook(self):
         for source in ("https://example.com/x.md", "./a.md", "some hint"):
