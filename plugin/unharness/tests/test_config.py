@@ -423,6 +423,7 @@ AGENT_SHAPE_ERRORS = [
         "subagents:\n  other:\n    stack:\n      - dry\n    block:\n      tone: Be brief.\n",
         "unknown key 'block' in subagents.other; stack: and blocks: are the only keys a mapping agent holds",
     ),
+    ("you:\n  stack:\n  : dry\n", "unknown key '' in you; stack: and blocks: are the only keys a mapping agent holds"),
     ("you:\n  blocks:\n    tone: Be brief.\n", "no stack: in you; add stack: and list its elements under it"),
     ("you:\n  stack: dry\n", "you.stack must be a list of elements"),
     ("you:\n  stack:\n    name: dry\n", "you.stack must be a list of elements"),
@@ -483,6 +484,7 @@ BLOCK_SHAPE_ERRORS = [
     ("\n    tone:\n      file:\n        - a.md\n", MALFORMED_TONE),
     ("\n    tone:\n      path: a.md\n", "unknown key 'path' in you.blocks.tone; file: is the only key a mapping block holds"),
     ("\n    tone:\n      file: a.md\n      path: b.md\n", "unknown key 'path' in you.blocks.tone; file: is the only key a mapping block holds"),
+    ("\n    tone:\n      : a.md\n", "unknown key '' in you.blocks.tone; file: is the only key a mapping block holds"),
     ("\n    tone: >\n      Be brief.\n", "key 'tone' holds a block scalar; block scalars are not supported; write the value on one line"),
 ]
 

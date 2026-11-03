@@ -250,7 +250,7 @@ def _refuse_unknown_key(fields: dict, known: tuple[str, ...], place: str, kind: 
     if unknown:
         held = " and ".join(f"{key}:" for key in known)
         only = "are the only keys" if len(known) > 1 else "is the only key"
-        raise UnharnessError(f"unknown key '{unknown[0]}' in {place}; {held} {only} a mapping {kind} holds")
+        raise UnharnessError(f"unknown key '{unknown[0] or ''}' in {place}; {held} {only} a mapping {kind} holds")
 
 
 def _blocks(value: dict | list | str | None, agent: str) -> list[Block]:
