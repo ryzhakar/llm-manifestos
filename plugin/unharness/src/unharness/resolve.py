@@ -70,9 +70,10 @@ def locate_block(block: Block, directory: Path) -> Path:
 
 def _resolve_element(element: Element, directory: Path, registry: Path | None, login: Path) -> Document:
     path, plugin_root = locate(element, directory, registry, login)
+    place = f"element {element.name}"
     if not path.is_file():
-        raise UnharnessError(f"element {element.name} did not resolve; tried {path}")
-    body = _body(path, f"element {element.name}")
+        raise UnharnessError(f"{place} did not resolve; tried {path}")
+    body = _body(path, place)
     return Document(
         element.name,
         element.purpose,
