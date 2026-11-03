@@ -5,7 +5,7 @@ from importlib.resources import files
 from pathlib import Path
 
 import pytest
-from helpers import UNREADABLE_FILES, write, write_not_utf_8
+from helpers import UNREADABLE_FILES, write
 from unharness.compile import compile_prompt, stack_block, stack_view
 from unharness.config import load
 from unharness.resolve import resolve_stack
@@ -293,24 +293,24 @@ def test_a_block_file_with_no_text_past_its_frontmatter_stops_prompt(login, bloc
     assert run.stderr == f"unharness: you.blocks.reading has no text in {blocks_project.resolve() / 'notes/reading.md'}\n"
 
 
-@pytest.mark.parametrize("spoil, reason", UNREADABLE_FILES)
-def test_a_block_file_that_cannot_be_read_stops_prompt_in_one_line(login, blocks_project, spoil, reason):
-    spoil(blocks_project / "notes/reading.md")
-
-    run = unharness(login, "prompt", cwd=blocks_project)
-
-    assert (run.returncode, run.stdout) == (1, "")
-    assert run.stderr == f"unharness: you.blocks.reading file {blocks_project.resolve() / 'notes/reading.md'} cannot be read: {reason}\n"
-
-
-def test_a_file_element_that_is_not_utf_8_stops_prompt_with_its_own_line(login, tmp_path):
-    write_not_utf_8(tmp_path / "rules.md")
-    write(tmp_path / ".manifestos/config.yaml", "you:\n  - name: rules\n    source: file rules.md\n")
-
-    run = unharness(login, "prompt", cwd=tmp_path)
+@pytest.mark.parametrize("unreadable, reason", UNREADABLE_FILES)
+def test_a_block_file_that_cannot_be_read_stops_prompt_in_one_line(login, blocks_project, unreadable, reason):
+    with unreadable(blocks_project) as file:
+        write(blocks_project / ".manifestos/config.yaml", BLOCKS_CONFIG.replace("notes/reading.md", file))
+        run = unharness(login, "prompt", cwd=blocks_project)
 
     assert (run.returncode, run.stdout) == (1, "")
-    assert run.stderr == f"unharness: element rules file {tmp_path.resolve() / 'rules.md'} cannot be read: not UTF-8 text\n"
+    assert run.stderr == f"unharness: you.blocks.reading file {blocks_project.resolve() / file} cannot be read: {reason}\n"
+
+
+@pytest.mark.parametrize("unreadable, reason", UNREADABLE_FILES)
+def test_a_file_element_that_cannot_be_read_stops_prompt_with_its_own_line(login, tmp_path, unreadable, reason):
+    with unreadable(tmp_path) as file:
+        write(tmp_path / ".manifestos/config.yaml", f"you:\n  - name: rules\n    source: file {file}\n")
+        run = unharness(login, "prompt", cwd=tmp_path)
+
+    assert (run.returncode, run.stdout) == (1, "")
+    assert run.stderr == f"unharness: element rules file {tmp_path.resolve() / file} cannot be read: {reason}\n"
 
 
 @pytest.mark.parametrize("flags", [

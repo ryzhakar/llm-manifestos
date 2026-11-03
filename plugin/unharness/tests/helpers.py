@@ -16,26 +16,26 @@ def write(path: Path, text: str) -> Path:
     return path
 
 
-def write_not_utf_8(path: Path) -> Path:
-    """Write the file with the byte 0xE9 standing alone, which no UTF-8 text holds."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(NOT_UTF_8_BYTES)
-    return path
+@contextmanager
+def not_utf_8_file(folder: Path) -> Iterator[str]:
+    """Yield the name of a file in the folder that holds the byte 0xE9 standing alone, which no UTF-8 text holds."""
+    name = "latin-1.md"
+    (folder / name).write_bytes(NOT_UTF_8_BYTES)
+    yield name
 
 
-def write_refused(path: Path) -> Path:
-    """Write the file at mode 000, which the system refuses to open for anyone but root."""
-    write(path, "Refused.\n")
-    path.chmod(NO_PERMISSIONS)
-    return path
+@contextmanager
+def file_at_mode_000(folder: Path) -> Iterator[str]:
+    """Yield the name of a file in the folder at mode 000, which the system refuses to open for anyone but root."""
+    name = "refused.md"
+    write(folder / name, "Refused.\n").chmod(NO_PERMISSIONS)
+    yield name
 
 
+SKIPPED_AS_ROOT = pytest.mark.skipif(os.geteuid() == 0, reason="root opens what mode 000 refuses")
 UNREADABLE_FILES = [
-    pytest.param(write_not_utf_8, "not UTF-8 text", id="not-utf-8"),
-    pytest.param(
-        write_refused, "Permission denied", id="mode-000",
-        marks=pytest.mark.skipif(os.geteuid() == 0, reason="root opens a file at mode 000"),
-    ),
+    pytest.param(not_utf_8_file, "not UTF-8 text", id="not-utf-8"),
+    pytest.param(file_at_mode_000, "Permission denied", id="mode-000", marks=SKIPPED_AS_ROOT),
 ]
 
 

@@ -5,7 +5,7 @@ import socket
 from pathlib import Path
 
 import pytest
-from helpers import UNREADABLE_FILES, write, write_not_utf_8
+from helpers import UNREADABLE_FILES, write
 from unharness.cli import main
 from unharness.compile import stack_block
 from unharness.config import load
@@ -1009,32 +1009,37 @@ def checks(lines: list[str]) -> list[str]:
     return [line.split(": ")[0].partition(" ")[2] for line in lines]
 
 
-@pytest.mark.parametrize("spoil, reason", UNREADABLE_FILES)
+@pytest.mark.parametrize("unreadable, reason", UNREADABLE_FILES)
 @pytest.mark.parametrize("arguments, you_status, implementer_status", LOADED_AGENT_STATUSES)
 def test_a_block_file_that_cannot_be_read_fails_for_the_loaded_agent_and_warns_for_another_among_every_check(
-    host, blocks_project, capsys, spoil, reason, arguments, you_status, implementer_status,
+    host, blocks_project, capsys, unreadable, reason, arguments, you_status, implementer_status,
 ):
     folder = blocks_project.parent.parent
     _, before = doctor(capsys, "--config", str(blocks_project), *arguments)
-    reading, scope = spoil(folder / ".manifestos/blocks/reading.md"), spoil(folder / "scope.md")
+    with unreadable(folder) as file:
+        write(blocks_project, BLOCKS_CONFIG.replace(".manifestos/blocks/reading.md", file).replace("scope.md", file))
+        _, lines = doctor(capsys, "--config", str(blocks_project), *arguments)
 
-    _, lines = doctor(capsys, "--config", str(blocks_project), *arguments)
-
-    assert finding(lines, "you.blocks.reading") == f"{you_status} you.blocks.reading: you.blocks.reading file {reading} cannot be read: {reason}"
+    unread = f"file {folder / file} cannot be read: {reason}"
+    assert finding(lines, "you.blocks.reading") == f"{you_status} you.blocks.reading: you.blocks.reading {unread}"
     assert finding(lines, "subagents.implementer.blocks.scope") == (
-        f"{implementer_status} subagents.implementer.blocks.scope: subagents.implementer.blocks.scope file {scope} cannot be read: {reason}"
+        f"{implementer_status} subagents.implementer.blocks.scope: subagents.implementer.blocks.scope {unread}"
     )
     assert checks(lines) == checks(before)
 
 
-def test_a_file_element_that_is_not_utf_8_fails_its_line_and_prints_the_checks_a_missing_file_prints(host, project, capsys):
+@pytest.mark.parametrize("unreadable, reason", UNREADABLE_FILES)
+def test_a_file_element_that_cannot_be_read_fails_its_line_and_prints_the_checks_a_missing_file_prints(
+    host, project, capsys, unreadable, reason,
+):
+    folder = project.parent.parent
     write(project, CONFIG + "  - name: rules\n    source: file rules.md\n")
     _, missing = doctor(capsys, "--config", str(project))
-    rules = write_not_utf_8(project.parent.parent / "rules.md")
+    with unreadable(folder) as file:
+        write(project, CONFIG + f"  - name: rules\n    source: file {file}\n")
+        status, lines = doctor(capsys, "--config", str(project))
 
-    status, lines = doctor(capsys, "--config", str(project))
-
-    assert finding(lines, "element rules") == f"FAIL element rules: element rules file {rules} cannot be read: not UTF-8 text"
+    assert finding(lines, "element rules") == f"FAIL element rules: element rules file {folder / file} cannot be read: {reason}"
     assert (status, checks(lines)) == (1, checks(missing))
 
 
