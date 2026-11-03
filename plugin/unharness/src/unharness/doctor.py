@@ -133,11 +133,11 @@ def doctor(
     ]
     layout = _layout_findings(project_folder(config_path))
     if has_failed(layout):
-        return [*layout, *host, _manifesto_plugin_finding(login, SUBAGENT_HOOK_FLOOR)]
+        return [*layout, *host, _manifesto_plugin_finding(login, _plugin_floor(None))]
     try:
         config = load(config_path)
     except UnharnessError as error:
-        return [*layout, Finding(Status.FAIL, "config", str(error)), *host, _manifesto_plugin_finding(login, SUBAGENT_HOOK_FLOOR)]
+        return [*layout, Finding(Status.FAIL, "config", str(error)), *host, _manifesto_plugin_finding(login, _plugin_floor(None))]
     plugin = manifesto_plugin_dir(config.registry, login)
     match = None if modes.agent is None else subagent_match(modes.agent, list(config.subagents))
     matched = None if match is None else match.key
@@ -171,7 +171,7 @@ def doctor(
         *_block_findings(config, loads_you, matched),
         _preamble_finding(config.directory),
         *host,
-        _manifesto_plugin_finding(login, MAPPING_AGENT_FLOOR if config.mapping_form else SUBAGENT_HOOK_FLOOR),
+        _manifesto_plugin_finding(login, _plugin_floor(config)),
         *size,
     ]
 
@@ -396,6 +396,11 @@ def _uv_finding(environ: Mapping[str, str]) -> Finding:
     if uvx is None:
         return Finding(Status.FAIL, UV_BINARY, f"{UVX_BINARY} is not on PATH; install uv, which ships it")
     return Finding(Status.OK, UV_BINARY, " ".join(str(path) for path in (uv, uvx) if path))
+
+
+def _plugin_floor(config: Config | None) -> PluginFloor:
+    """Return the manifesto plugin floor: 4.2.0 for a loaded config with an agent written as a mapping, else 4.0.1."""
+    return MAPPING_AGENT_FLOOR if config is not None and config.mapping_form else SUBAGENT_HOOK_FLOOR
 
 
 def _manifesto_plugin_finding(login: Path, floor: PluginFloor) -> Finding:
