@@ -151,13 +151,14 @@ def doctor(
     ]
     mode, flag_error = _flagged_mode(modes)
     loads_you = modes.agent is None
+    you_block_outcomes = [_block_outcome(block, agent_path(None), config.directory, loads_you) for block in config.you.blocks]
     on_stack = [] if stack is None else [
         *_digest_findings(config.you.stack, stack, config.directory, plugin, mode, loads_you),
         _cover_finding(config.you.stack, stack, config.directory, plugin, mode, flag_error, loads_you),
         *_session_findings(stack, config.directory, modes, loads_you),
     ]
     size = [] if stack is None else [
-        _prompt_size_finding(config.you.stack, stack, config.directory, plugin, _loadable_blocks(config.you.blocks, config.directory)),
+        _prompt_size_finding(config.you.stack, stack, config.directory, plugin, [document for _, document in you_block_outcomes if document]),
     ]
     return [
         *layout,
@@ -168,7 +169,8 @@ def doctor(
         *on_stack,
         *_agent_match_findings(modes.agent, match, list(config.subagents)),
         *_subagent_findings(config, login, modes, matched),
-        *_block_findings(config, loads_you, matched),
+        *[finding for finding, _ in you_block_outcomes],
+        *_subagent_block_findings(config, matched),
         _preamble_finding(config.directory),
         *host,
         _manifesto_plugin_finding(login, _plugin_floor(config)),
@@ -247,31 +249,23 @@ def _subagent_finding(key: str, elements: list[Element], config: Config, login: 
     return Finding(Status.OK, name, f"{len(documents)} elements resolved; session files current")
 
 
-def _block_findings(config: Config, loads_you: bool, matched: str | None) -> list[Finding]:
-    """Report each block of you:, then of each subagents key in config order; a file problem fails for the agent prompt would load."""
-    agents = [(None, config.you, loads_you), *((key, agent, key == matched) for key, agent in config.subagents.items())]
-    return [_block_finding(block, agent_path(key), config.directory, loaded) for key, agent, loaded in agents for block in agent.blocks]
+def _subagent_block_findings(config: Config, matched: str | None) -> list[Finding]:
+    """Report each block of each subagents key in config order; a file problem fails for the matched key."""
+    return [
+        _block_outcome(block, agent_path(key), config.directory, key == matched)[0]
+        for key, agent in config.subagents.items()
+        for block in agent.blocks
+    ]
 
 
-def _block_finding(block: Block, agent: str, directory: Path, loaded: bool) -> Finding:
-    """Report the block by its path: one line, or the path of its file, else why its file cannot load."""
+def _block_outcome(block: Block, agent: str, directory: Path, loaded: bool) -> tuple[Finding, Document | None]:
+    """Report the block by its path, one line or its file's path, else why its file cannot load; return its Document when it loads."""
     name = block_path(agent, block.name)
     try:
-        resolve_block(block, agent, directory)
+        document = resolve_block(block, agent, directory)
     except UnharnessError as error:
-        return Finding(Status.FAIL if loaded else Status.WARN, name, str(error))
-    return Finding(Status.OK, name, ONE_LINE if block.file is None else str(locate_block(block, directory)))
-
-
-def _loadable_blocks(blocks: list[Block], directory: Path) -> list[Document]:
-    """Return the blocks of you whose text loads, leaving out a block whose file is missing or empty."""
-    loaded = []
-    for block in blocks:
-        try:
-            loaded.append(resolve_block(block, agent_path(None), directory))
-        except UnharnessError:
-            continue
-    return loaded
+        return Finding(Status.FAIL if loaded else Status.WARN, name, str(error)), None
+    return Finding(Status.OK, name, ONE_LINE if block.file is None else str(locate_block(block, directory))), document
 
 
 def _skill_finding(element: Element, config: Config, login: Path) -> Finding:
