@@ -1,3 +1,4 @@
+import errno
 import os
 import signal
 from collections.abc import Iterator
@@ -56,9 +57,9 @@ def file_with_long_name(folder: Path) -> Iterator[str]:
 SKIPPED_AS_ROOT = pytest.mark.skipif(os.geteuid() == 0, reason="root opens what mode 000 refuses")
 UNREADABLE_FILES = [
     pytest.param(not_utf_8_file, "not UTF-8 text", id="not-utf-8"),
-    pytest.param(file_at_mode_000, "Permission denied", id="mode-000", marks=SKIPPED_AS_ROOT),
-    pytest.param(file_in_folder_at_mode_000, "Permission denied", id="folder-at-mode-000", marks=SKIPPED_AS_ROOT),
-    pytest.param(file_with_long_name, "File name too long", id="300-character-name"),
+    pytest.param(file_at_mode_000, os.strerror(errno.EACCES), id="mode-000", marks=SKIPPED_AS_ROOT),
+    pytest.param(file_in_folder_at_mode_000, os.strerror(errno.EACCES), id="folder-at-mode-000", marks=SKIPPED_AS_ROOT),
+    pytest.param(file_with_long_name, os.strerror(errno.ENAMETOOLONG), id="300-character-name"),
 ]
 
 
