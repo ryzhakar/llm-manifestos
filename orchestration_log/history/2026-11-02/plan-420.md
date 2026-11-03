@@ -9,4 +9,4 @@ Units:
 - R release by the orchestrator: rebase on session/long-run, version commit 4.2.0 in the six files 87ed6ee touched, gates, ship, tags v4.2.0 and pypi-4.2.0, publish run.
 - Post: when the installed manifesto plugin reads 4.2.0, convert this repo's .manifestos/config.yaml to the mapping form with the reading block (queue 87).
 
-Status: S5 done and amended (queue 89); U8 dispatched 2026-11-02, worktree blocks.
+Status: DONE 2026-11-03, main 550dcc8, tags v4.2.0 + pypi-4.2.0 (publish run 41565308297). Queue 87 pending: convert .manifestos/config.yaml once the installed manifesto plugin reads 4.2.0.
