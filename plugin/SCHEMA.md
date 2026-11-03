@@ -169,9 +169,11 @@ In a line, `<agent>` stands for `you` or `subagents.<key>`, and `<list>` for an 
 | `unknown key '<key>' in <agent>.blocks.<name>; file: is the only key a mapping block holds` | a mapping block's first key other than `file` |
 | `<agent>.blocks.<name> did not resolve; tried <path>` | `unharness prompt` or doctor finds no file at a block's path; the load never reads it |
 | `<agent>.blocks.<name> has no text in <path>` | `unharness prompt` or doctor finds a block file empty once its frontmatter is removed and its text stripped |
+| `<agent>.blocks.<name> file <path> cannot be read: <reason>` | `unharness prompt` or doctor finds a block file that the system refuses to open or that is not UTF-8 text; `<reason>` is the system's error text, or `not UTF-8 text` |
 | `subagents must be a mapping of role to list of elements` | `subagents` holds a scalar or a list |
 | `element N of <list> has no name; add name: or a file source` | an element mapping without `name` and without a `file` source |
 | `element X did not resolve; tried <path>` | the one path the source names does not exist; with no cached plugin the path shows the pattern `plugins/cache/*/<plugin>/*/...` |
+| `element X file <path> cannot be read: <reason>` | an element's file that the system refuses to open or that is not UTF-8 text; `<reason>` is the system's error text, or `not UTF-8 text` |
 | `element N of <list> has source 'S' that is none of manifesto <name>, skill <plugin>:<skill>, skill <skill>, or file <path>; write a path as file <path>` | a legacy or malformed source |
 | `element N of <list> name 'X' must hold no whitespace; add name:` | a name, or a file stem used as one, that holds whitespace |
 | `cannot place the line 'L'; check its indent`, `the line 'L' is indented with a tab; indent with spaces`, `key 'K' appears twice` | the YAML reader refuses a line it cannot place, a tab indent, or a repeated key |
