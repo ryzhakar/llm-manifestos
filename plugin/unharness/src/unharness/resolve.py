@@ -5,6 +5,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
+from stat import S_ISREG
 
 from unharness.config import MANIFESTO_SOURCE, SKILL_SOURCE, TEXT_ENCODING, Block, Element, UnharnessError, block_path
 
@@ -55,7 +56,7 @@ def resolve_block(block: Block, agent_label: str, directory: Path) -> Document:
         return Document(block.name, None, block.line.strip())
     path = locate_block(block, directory)
     place = block_path(agent_label, block.name)
-    if not path.is_file():
+    if not _is_file(path, place):
         raise UnharnessError(f"{place} did not resolve; tried {path}")
     text = _body(path, place)
     if not text:
@@ -71,7 +72,7 @@ def locate_block(block: Block, directory: Path) -> Path:
 def _resolve_element(element: Element, directory: Path, registry: Path | None, login: Path) -> Document:
     path, plugin_root = locate(element, directory, registry, login)
     place = f"element {element.name}"
-    if not path.is_file():
+    if not _is_file(path, place):
         raise UnharnessError(f"{place} did not resolve; tried {path}")
     body = _body(path, place)
     return Document(
@@ -82,17 +83,30 @@ def _resolve_element(element: Element, directory: Path, registry: Path | None, l
     )
 
 
+def _is_file(path: Path, place: str) -> bool:
+    """Say whether a file is at the path, False when nothing or no file is there, and stop with the cannot-be-read line when the system refuses to look."""
+    try:
+        return S_ISREG(path.stat().st_mode)
+    except (FileNotFoundError, NotADirectoryError, ValueError):
+        return False
+    except OSError as error:
+        raise _unreadable(place, path, error.strerror) from None
+
+
 def _body(path: Path, place: str) -> str:
-    """Return the file's text with its frontmatter removed, stripped, else stop with a line naming the place, the path, and why the file cannot be read."""
+    """Return the file's text with its frontmatter removed, stripped, else stop with the cannot-be-read line when the system refuses the file or the file is not UTF-8 text."""
     try:
         text = path.read_text(encoding=TEXT_ENCODING)
     except UnicodeDecodeError:
-        reason = NOT_UTF_8_TEXT
+        raise _unreadable(place, path, NOT_UTF_8_TEXT) from None
     except OSError as error:
-        reason = error.strerror
-    else:
-        return FRONTMATTER.sub("", text).strip()
-    raise UnharnessError(f"{place} file {path} cannot be read: {reason}")
+        raise _unreadable(place, path, error.strerror) from None
+    return FRONTMATTER.sub("", text).strip()
+
+
+def _unreadable(place: str, path: Path, reason: str) -> UnharnessError:
+    """Return the cannot-be-read error, which names the place, the path, and the reason the file cannot be read."""
+    return UnharnessError(f"{place} file {path} cannot be read: {reason}")
 
 
 def locate(element: Element, directory: Path, registry: Path | None, login: Path) -> tuple[Path, Path | None]:

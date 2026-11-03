@@ -3,11 +3,13 @@ import signal
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
+from stat import S_IMODE
 
 import pytest
 
 NOT_UTF_8_BYTES = b"Caf\xe9\n"
 NO_PERMISSIONS = 0o000
+LONG_NAME = "n" * 300 + ".md"
 
 
 def write(path: Path, text: str) -> Path:
@@ -32,10 +34,31 @@ def file_at_mode_000(folder: Path) -> Iterator[str]:
     yield name
 
 
+@contextmanager
+def file_in_folder_at_mode_000(folder: Path) -> Iterator[str]:
+    """Yield the path of a file inside a folder held at mode 000 until the block ends, so that the system refuses to look it up."""
+    locked = folder / "locked"
+    write(locked / "notes.md", "Notes.\n")
+    mode = S_IMODE(locked.stat().st_mode)
+    locked.chmod(NO_PERMISSIONS)
+    try:
+        yield "locked/notes.md"
+    finally:
+        locked.chmod(mode)
+
+
+@contextmanager
+def file_with_long_name(folder: Path) -> Iterator[str]:
+    """Yield a file name of 300 characters, which the system refuses to look up in any folder as too long."""
+    yield LONG_NAME
+
+
 SKIPPED_AS_ROOT = pytest.mark.skipif(os.geteuid() == 0, reason="root opens what mode 000 refuses")
 UNREADABLE_FILES = [
     pytest.param(not_utf_8_file, "not UTF-8 text", id="not-utf-8"),
     pytest.param(file_at_mode_000, "Permission denied", id="mode-000", marks=SKIPPED_AS_ROOT),
+    pytest.param(file_in_folder_at_mode_000, "Permission denied", id="folder-at-mode-000", marks=SKIPPED_AS_ROOT),
+    pytest.param(file_with_long_name, "File name too long", id="300-character-name"),
 ]
 
 
