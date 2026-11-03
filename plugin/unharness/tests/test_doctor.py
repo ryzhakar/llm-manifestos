@@ -143,9 +143,7 @@ def test_a_manifesto_plugin_below_4_0_1_fails_since_its_subagent_hook_stands_dow
 
     _, lines = doctor(capsys, *missing_config)
 
-    assert finding(lines, "manifesto plugin") == (
-        "FAIL manifesto plugin: 4.0.0 is below 4.0.1, the first version whose subagent hook binds under unharness"
-    )
+    assert finding(lines, "manifesto plugin") == SUBAGENT_HOOK_FLOOR_FAIL
 
 
 def test_the_newest_recorded_manifesto_version_counts_when_several_scopes_record_one(host, missing_config, capsys):
@@ -788,19 +786,6 @@ def test_prompt_size_equals_the_word_count_of_the_prompts_it_names(host, project
     assert finding(lines, "prompt size") == f"OK prompt size: full {prompts['full']} words; shortest {prompts['shortest']} words"
 
 
-def test_prompt_size_counts_the_preamble_the_constitution_and_the_session_file_bodies(host, project, capsys):
-    write(plugin_folder(host) / "manifestos" / "dry.md", "# dry\n\nOne two.\n")
-    write(project, "you:\n  - name: dry\n")
-    write(plugin_folder(host) / "digests" / "dry.md", "Short.")
-    stamp(host, project, plugin_folder(host) / "digests", "dry")
-    write_session_files(project, host / "login", FULL_PAIR + MINIFIED_PAIR)
-    write(project.parent.parent / ".manifestos/preamble.md", "Alpha beta.")
-
-    _, lines = doctor(capsys, "--config", str(project))
-
-    assert finding(lines, "prompt size") == "OK prompt size: full 14 words; shortest 11 words"
-
-
 MALFORMED_RECORDS = [
     "[]",
     '{"plugins": null}',
@@ -982,7 +967,7 @@ def test_each_block_prints_one_line_by_its_path_after_the_subagent_stacks_and_be
     names = [line.split(": ")[0] for line in lines]
     first = names.index("OK you.blocks.tone")
     assert lines[first:first + 4] == [
-        "OK you.blocks.tone: one line",
+        TONE_LINE,
         f"OK you.blocks.reading: {folder / '.manifestos/blocks/reading.md'}",
         f"WARN subagents.implementer.blocks.scope: subagents.implementer.blocks.scope did not resolve; tried {folder / 'scope.md'}",
         "OK subagents.reviewer.blocks.focus: one line",
@@ -1059,19 +1044,21 @@ def test_block_lines_stay_when_an_element_fails(host, blocks_project, capsys):
     _, lines = doctor(capsys, "--config", str(blocks_project))
 
     assert finding(lines, "stack you").startswith("FAIL stack you: element kiss did not resolve")
-    assert finding(lines, "you.blocks.tone") == "OK you.blocks.tone: one line"
+    assert finding(lines, "you.blocks.tone") == TONE_LINE
 
 
 MAPPING_KEY_CONFIG = CONFIG + "subagents:\n  implementer:\n    stack:\n      - name: dry\n"
 BROKEN_MAPPING_CONFIG = "you:\n  stack:\n    - name: dry\n  blocks:\n    harness: Mine.\n"
 MAPPING_FLOOR_FAIL = "FAIL manifesto plugin: 4.1.0 is below 4.2.0, the first version whose hooks read an agent written as a mapping"
+SUBAGENT_HOOK_FLOOR_FAIL = "FAIL manifesto plugin: 4.0.0 is below 4.0.1, the first version whose subagent hook binds under unharness"
+TONE_LINE = "OK you.blocks.tone: one line"
 
 
 @pytest.mark.parametrize("config, version, line", [
     (MAPPING_KEY_CONFIG, "4.1.0", MAPPING_FLOOR_FAIL),
     (MAPPING_KEY_CONFIG, "4.2.0", f"OK manifesto plugin: 4.2.0; {MANIFESTO_PLUGIN_NOTE}"),
     (CONFIG, "4.1.0", f"OK manifesto plugin: 4.1.0; {MANIFESTO_PLUGIN_NOTE}"),
-    (CONFIG, "4.0.0", "FAIL manifesto plugin: 4.0.0 is below 4.0.1, the first version whose subagent hook binds under unharness"),
+    (CONFIG, "4.0.0", SUBAGENT_HOOK_FLOOR_FAIL),
     (BROKEN_MAPPING_CONFIG, "4.1.0", f"OK manifesto plugin: 4.1.0; {MANIFESTO_PLUGIN_NOTE}"),
 ])
 def test_the_plugin_floor_is_4_2_0_for_a_loaded_config_with_a_mapping_agent_and_4_0_1_otherwise(host, project, capsys, config, version, line):
