@@ -78,3 +78,7 @@ The hooks need none: the scratch copy held no compiled file, and both hooks boun
 ## 6. One finding outside the ask
 
 Your `instruction-eval` lists `.manifestos.yaml` among the memory files it guards: `instruction-eval/src/instruction_eval/reader.py:505`, and the tests `instruction-eval/tests/test_neutral_login_check.py:176` and `instruction-eval/tests/test_series_new.py:93`. The 4.x file is `.manifestos/config.yaml`, which no entry names. I did not read what the guard does with the list; whether it should name the new path is yours to judge.
+
+## Addendum, 2026-11-13T20:10+0200
+
+At the run the cache held orchestration 5.0.1 as its highest version, which is why §2 names 5.0.1. Since 19:02 the cache holds 6.0.0, and the same `source: skill orchestration:agentic-delegation` resolves to it.
